@@ -16,3 +16,4 @@ api:
   basepath: "/api/v1"
   dos:
     basepath: "/api/v2"
+  autodiscoveryId: "19730396"

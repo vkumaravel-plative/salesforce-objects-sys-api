@@ -23,16 +23,6 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
 		</salesforce:oauth-client-credentials-connection>
 	</salesforce:sfdc-config>
-	<salesforce:sfdc-config name="Salesforce_Config_v2" doc:name="Salesforce Config" doc:id="6dbd7f50-112d-441f-85ef-a2c8f1a27b36" >
-		<salesforce:oauth-client-credentials-connection >
-			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
-		</salesforce:oauth-client-credentials-connection>
-	</salesforce:sfdc-config>
-	<salesforce:sfdc-config name="Salesforce_Config_New" doc:name="Salesforce Config" doc:id="e0c178ce-c920-43b1-b8dd-ca94b5691122" >
-		<salesforce:oauth-client-credentials-connection >
-			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
-		</salesforce:oauth-client-credentials-connection>
-	</salesforce:sfdc-config>
 	<api-gateway:autodiscovery apiId="${api.autodiscoveryId}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="3dd1ad0e-6157-42d7-a1f9-40b8ef07f99b" flowRef="api-main" />
 	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="62ce6334-ce35-44b7-9f2c-2ff2c746507a" basePath="#[vars.requestParam.basePath]" >
 		<http:request-connection host="#[vars.requestParam.host]" port="#[vars.requestParam.port]" protocol="HTTPS"/>

@@ -134,7 +134,7 @@ output application/json
 			</ee:variables>
 		</ee:transform>
 		<logger level="INFO" doc:name="Logger" doc:id="754ef236-78c0-4bdf-b667-4a9c8392891c" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-		<salesforce:query-all doc:name="Query all" doc:id="3e52b90f-3c00-480c-bdee-213e92cdf330" config-ref="Salesforce_Config_v2" >
+		<salesforce:query-all doc:name="Query all" doc:id="3e52b90f-3c00-480c-bdee-213e92cdf330" config-ref="Salesforce_Config" >
 			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 		<choice doc:name="Choice" doc:id="5d9e12b3-7109-43ce-956f-4b43f8f028d7" >
@@ -262,7 +262,7 @@ output application/json
 					</ee:variables>
 				</ee:transform>
 				<logger level="INFO" doc:name="Logger" doc:id="b74d2510-c54b-4817-8d3d-beaa54570059" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "source": "Modus",&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-				<salesforce:query-all doc:name="Query all" doc:id="b0f08a81-0737-4292-b3b3-6a9a75f8a391" config-ref="Salesforce_Config_v2" >
+				<salesforce:query-all doc:name="Query all" doc:id="b0f08a81-0737-4292-b3b3-6a9a75f8a391" config-ref="Salesforce_Config" >
 					<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 				</salesforce:query-all>
 				<logger level="INFO" doc:name="Logger" doc:id="d72edaa8-18fc-4f4c-9240-589471203fcf" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "source": "Modus",&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "After call to Salesforce",&#10; "response": payload[0]."Contact"."Id" default ""&#10;}]'/>
@@ -277,7 +277,7 @@ output application/json
 "SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact WHERE Id='" ++ payload[0]."Contact"."Id" ++ "'"]]></ee:set-variable>
 							</ee:variables>
 						</ee:transform>
-						<salesforce:query-all doc:name="Query all" doc:id="d65cf9c0-089e-4019-a26c-ce2ea0ff3835" config-ref="Salesforce_Config_v2" >
+						<salesforce:query-all doc:name="Query all" doc:id="d65cf9c0-089e-4019-a26c-ce2ea0ff3835" config-ref="Salesforce_Config" >
 							<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 						</salesforce:query-all>
 						<ee:transform doc:name="Set Response" doc:id="1504d8a5-6cfe-4449-a4c6-991ffd2001f0" >
@@ -324,7 +324,7 @@ output application/json
 			</ee:variables>
 		</ee:transform>
 				<logger level="INFO" doc:name="Logger" doc:id="c34a00c1-74c7-428c-972e-67820c67f0fa" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-				<salesforce:query-all doc:name="Query all" doc:id="38944f62-3d3a-4eed-a13e-e692f5a001ed" config-ref="Salesforce_Config_v2">
+				<salesforce:query-all doc:name="Query all" doc:id="38944f62-3d3a-4eed-a13e-e692f5a001ed" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 				<choice doc:name="Choice" doc:id="09db950c-5adf-4f16-a192-d5104b9f6185">
@@ -352,7 +352,7 @@ output application/json
 payload]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
-						<salesforce:update type="Contact" doc:name="Update" doc:id="0fea0566-835e-4f86-a8e9-b0424042274b" config-ref="Salesforce_Config_v2" />
+						<salesforce:update type="Contact" doc:name="Update" doc:id="0fea0566-835e-4f86-a8e9-b0424042274b" config-ref="Salesforce_Config" />
 						<ee:transform doc:name="Filter Error Response" doc:id="b00f44c2-70b0-44a8-ab52-782615d30235">
 							<ee:message>
 								<ee:set-payload><![CDATA[%dw 2.0
@@ -478,7 +478,7 @@ var temp = attributes.queryParams."q" splitBy "+"
 			</ee:variables>
 		</ee:transform>
 		<logger level="INFO" doc:name="Logger" doc:id="aeb7d6a3-55e2-4509-bbb9-e68b21614e06" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-		<salesforce:query-all doc:name="Query all" doc:id="5b393772-4169-4218-9782-a7317ddb984a" config-ref="Salesforce_Config_v2" >
+		<salesforce:query-all doc:name="Query all" doc:id="5b393772-4169-4218-9782-a7317ddb984a" config-ref="Salesforce_Config" >
 			<salesforce:salesforce-query ><![CDATA[#[vars.params.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 		<choice doc:name="Choice" doc:id="5553d7b5-1805-4486-8537-c345b1af092d" >
@@ -506,7 +506,7 @@ output application/json
 payload]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
-						<salesforce:update type="#[vars.params.sourceObject]" doc:name="Update" doc:id="1deabb6e-120f-4640-9ae7-453f47163ddd" config-ref="Salesforce_Config_v2" />
+						<salesforce:update type="#[vars.params.sourceObject]" doc:name="Update" doc:id="1deabb6e-120f-4640-9ae7-453f47163ddd" config-ref="Salesforce_Config" />
 						<ee:transform doc:name="Filter Error Response" doc:id="8244a63c-1328-4634-9d69-c766ea004f1b" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0
@@ -642,7 +642,7 @@ output application/json
 			</ee:variables>
 		</ee:transform>
 		<logger level="INFO" doc:name="Logger" doc:id="dab1dda8-e958-4eca-b9a9-2cf0b41f6426" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-		<salesforce:query-all doc:name="Query all" doc:id="afcb7a53-8b5f-4c52-82be-f7491837f741" config-ref="Salesforce_Config_v2" >
+		<salesforce:query-all doc:name="Query all" doc:id="afcb7a53-8b5f-4c52-82be-f7491837f741" config-ref="Salesforce_Config" >
 			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 		<choice doc:name="Choice" doc:id="20cc1aac-c436-47b1-b5ca-d0837cdba07d" >
@@ -670,7 +670,7 @@ output application/json
 payload]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
-						<salesforce:update type="Team_Member__c" doc:name="Update" doc:id="9f6d949b-2d9d-4007-b649-6530aef46ef2" config-ref="Salesforce_Config_v2" />
+						<salesforce:update type="Team_Member__c" doc:name="Update" doc:id="9f6d949b-2d9d-4007-b649-6530aef46ef2" config-ref="Salesforce_Config" />
 						<ee:transform doc:name="Filter Error Response" doc:id="2d93c6b5-cb95-4bee-a80d-6f7a72f074a8" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0
@@ -806,7 +806,7 @@ output application/json
 			</ee:variables>
 		</ee:transform>
 		<logger level="INFO" doc:name="Logger" doc:id="4b9f61b5-75f8-452b-801b-65d2793d56c8" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
-		<salesforce:query-all doc:name="Query all" doc:id="b33eaa3f-95e1-4491-8d2e-7d2b675282ea" config-ref="Salesforce_Config_v2" >
+		<salesforce:query-all doc:name="Query all" doc:id="b33eaa3f-95e1-4491-8d2e-7d2b675282ea" config-ref="Salesforce_Config" >
 			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 		<choice doc:name="Choice" doc:id="82ed37af-84b0-4bdb-945b-156cfeb3598b" >
@@ -834,7 +834,7 @@ output application/json
 payload]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
-						<salesforce:update type="Team__c" doc:name="Update" doc:id="9895a924-55cb-4c3d-bc71-1b113bec0088" config-ref="Salesforce_Config_v2" />
+						<salesforce:update type="Team__c" doc:name="Update" doc:id="9895a924-55cb-4c3d-bc71-1b113bec0088" config-ref="Salesforce_Config" />
 						<ee:transform doc:name="Filter Error Response" doc:id="e327bc47-f906-47c7-a5b9-7d90aaccd70a" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0

@@ -360,7 +360,7 @@ payload reduce (item, accumulator={}) ->
 	</sub-flow>
 	<sub-flow name="sf-upsert-subflow1" doc:id="1e8dc77e-4554-4b4c-a93a-e35ac659c310" >
 		<logger level="INFO" doc:name="Logger" doc:id="437234c5-153e-4d37-888d-efdab419bc9e" message="Before SF Upsert"/>
-		<salesforce:upsert objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]" doc:name="Upsert" doc:id="0acd996e-7a19-4a4d-918a-4c2e22c2a2df" config-ref="Salesforce_Config_New" >
+		<salesforce:upsert objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]" doc:name="Upsert" doc:id="0acd996e-7a19-4a4d-918a-4c2e22c2a2df" config-ref="Salesforce_Config" >
 			<salesforce:records ><![CDATA[#[output application/java
 ---
 vars.sfQuery.records]]]></salesforce:records>
@@ -397,14 +397,14 @@ payload reduce (item, accumulator={}) ->
 	</sub-flow>
 	<sub-flow name="sf-create-subflow" doc:id="89bf28e1-82b8-44b9-b57d-a3ee35996024" >
 		<logger level="INFO" doc:name="Logger" doc:id="bd94524c-abd8-497a-9016-c907372b395d" />
-		<salesforce:create doc:name="Create" doc:id="8773d242-3152-4733-ae40-bce93734d379" config-ref="Salesforce_Config_New" type='#[vars.sfQuery."recordType"]'>
+		<salesforce:create doc:name="Create" doc:id="8773d242-3152-4733-ae40-bce93734d379" config-ref="Salesforce_Config" type='#[vars.sfQuery."recordType"]'>
 			<salesforce:records ><![CDATA[#[vars.sfQuery."records"]]]></salesforce:records>
 		</salesforce:create>
 		<logger level="INFO" doc:name="Logger" doc:id="edd60100-3fa0-454a-92eb-0868e8637252" />
 	</sub-flow>
 	<sub-flow name="sf-queryAll-subflow1" doc:id="a694de27-d973-4775-bd41-5793935ec74c" >
 		<logger level="INFO" doc:name="Logger" doc:id="01cdd1ab-1cda-4a35-98e6-7042f3720ba4" />
-		<salesforce:query-all doc:name="Query all" doc:id="6771db1b-059c-4e5b-bcc9-77d481e403dd" config-ref="Salesforce_Config_New">
+		<salesforce:query-all doc:name="Query all" doc:id="6771db1b-059c-4e5b-bcc9-77d481e403dd" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery.query]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
 		<logger level="INFO" doc:name="Logger1" doc:id="3bd475b9-b79f-4e51-b332-43068e291137" />
@@ -433,7 +433,7 @@ output application/json
 payload]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<salesforce:update type="Account" doc:name="Update" doc:id="6919a78f-5615-414a-b07a-4c49832fa270" config-ref="Salesforce_Config_v2" />
+				<salesforce:update type="Account" doc:name="Update" doc:id="6919a78f-5615-414a-b07a-4c49832fa270" config-ref="Salesforce_Config" />
 				<ee:transform doc:name="Filter Error Response" doc:id="8003701c-5de1-47e4-bb6c-4771eb720380" >
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
