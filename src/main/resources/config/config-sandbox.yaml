@@ -1,0 +1,18 @@
+salesforce:
+  authUrl: "https://test.salesforce.com/services/Soap/u/61.0"
+  tokenUrl: "https://rebny--plativedev.sandbox.my.salesforce.com/services/oauth2/token"
+  
+scheduler:
+  cron: "0 0 13 1/1 * ? *"
+  
+ldc:
+  accountId: "298"
+  beginDate: "2024-01-01 00:00:00"
+  pwd: "e*$U37CX&Zmja8"
+  
+api:
+  host: "salesforce-objects-sys-api.us-e2.cloudhub.io"
+  port: "443"
+  basepath: "/api/v1"
+  dos:
+    basepath: "/api/v2"

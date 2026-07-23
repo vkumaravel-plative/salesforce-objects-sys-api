@@ -1,0 +1,52 @@
+#%RAML 1.0 DataType
+displayName: Common Response Format
+description: The common response format used for all API Calls.
+properties:
+  apiName:
+    type: string
+    description: Name of the API
+    example: "Salesforce Object System API"
+    required: true
+  apiVersion:
+    type: string
+    description: Version of the API
+    example: "v1.0.0"
+    required: true
+  correlationId:
+    type: string
+    description: A unique UUID for the request.
+    required: true
+    example: "101-aaa-bbb-ccc-ddd-202"
+  data:
+    type: object
+    description: The actual data returned by the service. If the service is a GET Request, the collection or single resource entity would reside here.
+    required: false
+    example:
+      {
+        "statusMessage": "Created User in Salesforce",
+        "userId": "2294738"
+      }
+  error:
+    type: object
+    required: false
+    description: An optional object only returned in case of an error
+    properties:
+      description:
+        type: string
+        description: A description of the error
+        example: Missing required header - x-correlation-id
+        required: true
+      code:
+        type: string
+        description: Status code identifying the error
+        example: '400'
+        required: true
+      timestamp:
+        type: string
+        required: true
+        description: A timestamp identifying the time of the error
+        example: "2020-01-01T00:00:01"
+      additionalDetails:
+        type: any
+        required: false
+        description: An optional attribute that could be of any type, usually an object or string that provides extra details around the exception cause.

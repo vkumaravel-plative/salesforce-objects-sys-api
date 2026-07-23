@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<error-handler name="error-handlerError_Handler" doc:id="30528537-f483-49e7-8768-4735fe7ec0a0" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f2734b67-59ea-4d22-8774-b16ac533aa34" type="APIKIT:BAD_REQUEST, SALESFORCE:INVALID_INPUT">
+			<ee:transform doc:name="Set Response" doc:id="e6c3b461-ec77-45ad-b75f-144e55cd69f0" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"apiName": Mule::p("api.name"),
+	"apiVersion": Mule::p("api.version"),
+	"correlationId" : correlationId,
+	"error" : {
+	    "description" : error.description,
+	    "code": "400",
+	    "timestamp": now(),
+	    "additionalDetails": (
+	    	if(isEmpty(error.errorMessage.payload)) 
+	    		(error.exception.cause.exceptionMessage default "Could not retrieve exact error")
+	    	else
+	    		(error.errorMessage.payload default "")
+	    )
+	}
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+400]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log Error" doc:id="d5f02b20-1ef0-493f-802f-eaa71632fea0" message="#[payload]"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="51b28ea9-2677-4936-b969-93d74f3640db" type="ANY">
+			<ee:transform doc:name="Set Response" doc:id="68b0c196-6174-4e1a-a608-76ce1b25f0fa" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"apiName": Mule::p("api.name"),
+	"apiVersion": Mule::p("api.version"),
+	"correlationId" : correlationId,
+	"error" : {
+	    "description" : error.description,
+	    "code": "500",
+	    "timestamp": now(),
+	    "additionalDetails": (
+	    	if(isEmpty(error.errorMessage.payload)) 
+	    		(error.exception.cause.exceptionMessage default "Could not retrieve exact error")
+	    	else
+	    		(error.errorMessage.payload default "")
+	    )
+	}
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log Error" doc:id="2c434a4f-54b4-43d6-aecd-e90ef1bfe380" message="#[payload]"/>
+		</on-error-propagate>
+	</error-handler>
+</mule>
