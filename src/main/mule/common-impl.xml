@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	<ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy" doc:id="a841fe95-2776-404c-9953-c3db206abcc4" objectStore="Object_store" keyGenerationExpression="#[vars.bcryptPwd]"/>
+	
+	<sub-flow name="update-CL-flag-subflow" doc:id="aed47051-4427-4baa-97cf-025c12fee6cb" >
+		<async doc:name="Async" doc:id="a20b649e-8e26-46b6-afd4-4f81a1ce97e4" >
+			<ee:transform doc:name="Update CL Update flag to false" doc:id="178a7319-db06-4f77-a845-d581e95d8948" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<foreach doc:name="For Each 200 Units" doc:id="1fa98950-4bb2-440e-8cf9-215aef27af98" collection="#[vars.updateSFPayload]" batchSize="200">
+				<ee:transform doc:name="Transform Message" doc:id="8432a33c-d6cc-42dd-b355-b3338179d921" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:update type="Account" doc:name="Update" doc:id="ff0dd61d-d0f1-40e9-b63c-e07e114f2e98" config-ref="Salesforce_Config">
+			</salesforce:update>
+				<ee:transform doc:name="Filter Error Response" doc:id="e36d1827-7ac2-4980-9bd8-78197cc58129">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="1e228779-d10f-4696-b81c-efe979dc5b78" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+			</foreach>
+		</async>
+	</sub-flow>
+	<sub-flow name="dos-fetch-data-subflow" doc:id="46c01354-66ea-4175-aa2d-6c58c3a779af" >
+		<ee:transform doc:name="Set offset" doc:id="d0d01c92-868d-42e8-b9a8-bf87285dfab9" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="offset" ><![CDATA[%dw 2.0
+output application/json
+---
+attributes.queryParams."offset" default 0]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch DOS data" doc:id="fc334849-7518-40d6-bffb-363ca0f678f1" name="dos-recursive-subflow"/>
+		<choice doc:name="Choice" doc:id="f5dd29aa-a94d-42b7-84fb-3bfea06ae662" >
+			<when expression="#[isEmpty(payload)]">
+				<logger level="INFO" doc:name="Logger" doc:id="8add5205-8182-43fc-a0bc-ba7790c1d797" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "End of DOS Integration",&#10; "queryFields": attributes.queryParams default ""&#10;}]'/>
+			
+</when>
+			<otherwise >
+				<ee:transform doc:name="Save DOS batch" doc:id="b3c4d5e6-f7a8-9012-bcde-f01234567890">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="dosBatch"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="Upsert to SF" doc:id="77b93a27-39d7-4c5b-911d-db764db04f4d" name="dos-sf-upsert-subflow"/>
+				<flow-ref doc:name="Link DOS records to Accounts" doc:id="c4d5e6f7-a8b9-0123-cdef-012345678901" name="dos-account-link-subflow"/>
+				<ee:transform doc:name="Set Recursion Param" doc:id="f57fb168-24fe-45f1-ab04-0dba643a0076">
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="requestParam"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"host": Mule::p("api.host"),
+	"port": Mule::p("api.port"),
+	"method": "GET",
+	"basePath": Mule::p("api.dos.basepath"),
+	"path": "/dos-recursion",
+	"header": {
+		"x-client-id": Mule::p("secure::api.clientId"),
+		"x-client-secret": Mule::p("secure::api.clientSecret"),
+		"x-correlation-id": uuid()
+	},
+	"queryParam": {
+		"offset": (vars.offset + 200)
+	},
+	"uriParam": {},
+	"body": {}
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="DOS Recursion" doc:id="8feab840-8ce7-403e-b5ad-cf0853f68b6e" name="common-http-call-subflow" />
+			
+</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="dos-sf-upsert-subflow" doc:id="ac308a5b-8ede-406b-8dc6-cd454da345ab" >
+		<ee:transform doc:name="Set SF payload" doc:id="bff01d99-5554-4770-8179-2b7398f14832">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+fun splitName (name: String) = do {
+    var temp=name splitBy " "
+    ---
+    if(sizeOf(temp) > 2) ([temp[1], temp[2], temp[0]] joinBy " ")
+    else if(sizeOf(temp) > 1) ([temp[1], temp[0]] joinBy " ")
+    else if(sizeOf(temp) > 0) (temp[0])
+    else ""
+}
+fun setDate (date: String) = ((date splitBy "T")[0]) as Date
+var temp = (payload map {
+    "Last_updated__c": $.":updated_at" as DateTime,
+    "Name": $."license_number",
+    "DOS_License_Number_External_ID__c": $."license_number",
+    "DoS_ID__c": $.":id",
+    "Business_Address_1__c": $."business_address_1",
+    "Business_Address_2__c": $."business_address_2",
+    "Business_City__c": $."business_city",
+    "Business_Name__c": $."business_name",
+    "Business_State__c": $."business_state",
+    "Business_Zip__c": $."business_zip",
+    "County__c": $."county",
+    ("License_Holder_Name__c": splitName($."license_holder_name")) if(!isEmpty($."license_holder_name")),
+    "License_Type__c": $."license_type",
+    ("License_Expiration_Date__c": setDate($."license_expiration_date")) if (!isEmpty($."license_expiration_date"))
+})
+---
+{"records":(temp groupBy $.Name) mapObject ((value, key, index) -> (key): (value orderBy ((ovalue, okey) -> ovalue.Last_updated__c))[-1]) pluck $}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables />
+				</ee:transform>
+		<ee:transform doc:name="Set upsert payload" doc:id="08159c77-4ad5-42bb-a3df-5ae84ce68b46">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"objType": "DOS_Data__c",
+	"extFieldName": "DOS_License_Number_External_ID__c",
+	"records": payload."records"
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+		<flow-ref doc:name="Upsert to SF" doc:id="afb436b2-7a6f-4aea-9898-8f21a34ebbce" name="sf-upsert-subflow1" />
+	</sub-flow>
+	<sub-flow name="dos-recursive-subflow" doc:id="f2d53ef3-dada-4956-a3e4-67be44bd99fd" >
+		<logger level="INFO" doc:name="Logger" doc:id="c21deff0-5251-4740-9c9d-67bc87c203ae" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "DOS Offset Value: "++(vars.offset default 0),&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set request parameters" doc:id="438bdf77-3a71-426f-abb0-97079658b6a0">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="requestParam"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"host": "data.ny.gov",
+	"port": "443",
+	"method": "GET",
+	"basePath": "/resource",
+	"path": "yg7h-zjbf.json?\$select=:*,%20*&\$offset="++(vars.offset default 0)++"&\$limit=200",
+	"header": {},
+	"queryParam": {},
+	"uriParam": {},
+	"body": {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch DOS data" doc:id="f714e504-6a17-4c58-aa50-72df4a36e748" name="common-http-call-subflow" />
+	</sub-flow>
+	<sub-flow name="common-http-call-subflow" doc:id="c58de746-2549-4166-b627-0a59682b42fd" >
+		<logger level="INFO" doc:name="Logger" doc:id="a3b5fbd4-9fce-491a-b645-95351ca635b1" message="Before HTTP Request"/>
+		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="6ec4cb27-4b54-4cae-ace2-a00a4fa03e0e" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration">
+			<http:body ><![CDATA[#[vars.requestParam.body default {}]]]></http:body>
+			<http:headers ><![CDATA[#[vars.requestParam.header default {}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[vars.requestParam.uriParam default {}]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[vars.requestParam.queryParam default {}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="d95410f4-27f7-4151-bc90-597ffb9d68e8" message="After HTTP Request"/>
+	</sub-flow>
+	<sub-flow name="common-http-urlencoded-call-subflow" doc:id="a3f98c92-3d11-418a-af51-6191b7d9665f" >
+		<logger level="INFO" doc:name="Logger" doc:id="95547221-1fc4-4a6e-b645-f5f6f4af3e1f" />
+		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="f382a7a3-ad92-4fd3-b289-402acdf2085c" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration">
+			<http:body ><![CDATA[#[%dw 2.0
+output application/x-www-form-urlencoded
+---
+vars.requestParam.body default {}]]]></http:body>
+			<http:headers ><![CDATA[#[vars.requestParam.header default {}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[vars.requestParam.uriParam default {}]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[vars.requestParam.queryParam default {}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="5686a366-e229-46ca-8f9e-ab07c906787a" />
+	</sub-flow>
+	<sub-flow name="sf-queryAll-subflow" doc:id="4ebd0bfb-6882-4e05-a623-8c764c5d7e55" >
+		<logger level="INFO" doc:name="Logger" doc:id="6507e5ea-b8d0-4695-b988-a9305737d914" />
+		<salesforce:query-all doc:name="Query all" doc:id="cb9b383d-861e-49f8-843c-9c9536840add" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<logger level="INFO" doc:name="Logger" doc:id="aa52106f-1b11-4e6b-863f-645b5338b6ac" />
+	</sub-flow>
+	<sub-flow name="sf-upsert-subflow" doc:id="b9cf4c91-9d4e-4577-a569-f27089f56586" >
+		<logger level="INFO" doc:name="Logger" doc:id="38cb46d7-b37f-4a7f-9a9b-7f7665a032f0" />
+		<salesforce:upsert doc:name="Upsert" doc:id="8bede94c-fae2-4a9c-8d00-f388952d7d2a" config-ref="Salesforce_Config" objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]">
+			<salesforce:records ><![CDATA[#[output application/java
+---
+vars.sfQuery.records]]]></salesforce:records>
+		</salesforce:upsert>
+		<logger level="INFO" doc:name="Logger" doc:id="6f4b38bb-078f-45b8-b33b-d4d937a968eb" />
+	</sub-flow>
+	<sub-flow name="ldc-violation-tracker-call-subflow" doc:id="da808669-c586-43a6-92be-6ac2afe16955" >
+		<os:retrieve doc:name="Retrieve" doc:id="2d7ed222-c11d-43b2-bf23-0aa14bb88b80" objectStore="Object_store" key="#[vars.initParams.osKey]" target="beginDate">
+			<os:default-value ><![CDATA[#["2024-01-01 00:00:00"]]]></os:default-value>
+		</os:retrieve>
+		<ee:transform doc:name="BCRYPT Password Gen" doc:id="ccec4aad-0772-46a6-84cb-e96f8257c92e" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="bcryptPwd" ><![CDATA[%dw 2.0
+output application/java
+var endDateTime = now() as String {format: "YYYY-MM-dd 23:59:59"}
+var endDate = now() as String {format: "YYYYMMdd"}
+var beginDate = vars.beginDate //"2024-01-01 00:00:00"//"2025-07-07 00:00:00"
+---
+Mule::p("ldc.accountId") ++ beginDate ++ endDateTime ++ endDate ++ Mule::p("ldc.pwd")]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<scripting:execute engine="Groovy" doc:name="Execute" doc:id="0c424f0a-eb1b-4306-a78c-df14631a264c">
+			<scripting:code><![CDATA[import org.mindrot.jbcrypt.BCrypt
+def password = vars.bcryptPwd
+// Hash the password with a cost factor of 4
+def hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(4))
+println "Hashed Password: $hashedPassword"
+payload = hashedPassword]]></scripting:code>
+		</scripting:execute>
+		<ee:transform doc:name="Set LDC Violation Tracker params" doc:id="313533db-b640-4411-904f-021635f6d591" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="requestParam" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"host": "listingdatachecker.com",
+	"port": "443",
+	"method": "GET",
+	"basePath": "/ldcservice",
+	"path": "/fine-export",
+	"header": {
+		"accountId": Mule::p("ldc.accountId"),
+		"key": payload,
+		"beginDate": vars.beginDate,//"2024-01-01 00:00:00",//"2025-07-07 00:00:00",
+		"endDate": now() as String {format: "YYYY-MM-dd 23:59:59"}
+	},
+	"queryParam": {},
+	"uriParam": {},
+	"body": {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<try doc:name="Try" doc:id="627a31f8-f6fc-499b-a5f5-b572c3f6b9cf" >
+			<flow-ref doc:name="Call LDC" doc:id="e6825073-0dad-4a6b-ba90-78bfb3896ee6" name="common-http-call-subflow" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="34468809-8332-425e-8d5b-132e0476936e" >
+					<set-payload value="#[%dw 2.0&#10;output application/xml&#10;---&#10;read('&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#10;&lt;ldc-service&gt;&#10;    &lt;fine-export beginDate=&quot;2024-01-01 00:00:00&quot; count=&quot;1618&quot; endDate=&quot;2024-12-04 23:59:59&quot;&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1521210084373818001&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;228&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;75th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-29900&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-02-29 13:39:30.83&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-01 05:00:38.31&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-29900&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4675102&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1521210084373818001&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;228&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;75th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-29900&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-02-29 13:39:30.83&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-07 09:02:07.6&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-29900&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4675102&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1521210084373818001&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;228&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;75th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-29900&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-02-29 13:39:30.83&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-08-26 07:33:21.61&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-29900&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4675102&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:37:41.27&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 21:45:43.223&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 07:28:55.58&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 08:47:53.687&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1527528304955576705&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1142&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Berriman&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-68813&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-27 16:45:41.393&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:40:55.69&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-68813&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4685412&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1527528304955576705&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1142&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Berriman&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-68813&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-27 16:45:41.393&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-02 09:54:02.987&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-68813&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4685412&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-5122943081&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-51&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;250&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;S&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;END&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46816&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-29 09:45:53.517&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 08:36:16.723&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46816&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4686209&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-5122943081&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-51&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;250&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;S&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;END&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46816&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-29 09:45:53.517&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-09 06:32:21.2&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46816&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4686209&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:37:41.27&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 21:45:43.223&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 07:28:55.58&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 08:47:53.687&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1527528304955576705&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1142&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Berriman&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-68813&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-27 16:45:41.393&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:40:55.69&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-68813&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4685412&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1527528304955576705&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1142&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Berriman&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-68813&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-27 16:45:41.393&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-02 09:54:02.987&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-68813&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4685412&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR500&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:37:41.27&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR500&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 21:45:43.223&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR500&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 07:28:55.58&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR500&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 08:47:53.687&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-03-28 07:37:41.27&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 21:45:43.223&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 07:28:55.58&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-429722937834&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-4297&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;515&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;89TH&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-37053&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-25 11:30:42.793&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-08 08:47:53.687&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-37053&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4684377&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-5122943081&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-51&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;250&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;S&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;END&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46816&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-29 09:45:53.517&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-01 08:36:16.723&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46816&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4686209&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-5122943081&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-51&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;250&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;S&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;END&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46816&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-03-29 09:45:53.517&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-09 06:32:21.2&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46816&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4686209&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RLMX-98522&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-6158&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;3047&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Brighton 6th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46848&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;IMMEDIATE FINED CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-02 11:16:02.923&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-11 21:45:42.84&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46848&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4687554&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-09 09:00:30.64&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-18 12:38:32.75&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-23 05:56:14.57&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-16 10:00:40.277&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-22 11:06:50.827&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-02 12:58:27.647&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-09 09:00:30.64&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-18 12:38:32.75&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1303067081667031017&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;45&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;E&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;85th&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Inaccurate Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-73817&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-09 08:18:30.783&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-23 05:56:14.57&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-73817&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4690356&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-52745&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;IGNORE&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-18 09:57:53.84&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-18 11:00:36.307&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-52745&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4694311&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-52745&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;IGNORE&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-18 09:57:53.84&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-24 13:57:43.37&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-52745&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4694311&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-103085&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;CORRECTABLE FINED CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 10:28:49.383&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-23 12:00:50.9&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-103085&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695741&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-103085&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;CORRECTABLE FINED CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 10:28:49.383&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-29 13:27:21.083&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-103085&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695741&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-103085&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;CORRECTABLE FINED CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 10:28:49.383&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-09 09:05:22.75&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-103085&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695741&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-51143&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 08:19:40.887&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-22 09:00:36.413&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-51143&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695673&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-51143&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 08:19:40.887&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-29 13:41:35.107&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-51143&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695673&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-51143&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-22 08:19:40.887&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-08 10:20:56.243&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-51143&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4695673&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-30 13:38:15.48&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-02 21:45:40.55&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-03 06:32:32.557&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-03 06:32:55.68&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1565952117794107313&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Clinton&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46621&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-30 07:45:44.057&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-30 13:41:19.08&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46621&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4699245&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1565952117794107313&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;1&lt;/k_stNo&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname&gt;Clinton&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-46621&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-30 07:45:44.057&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-14 13:05:38.0&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-46621&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4699245&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-16 10:00:40.277&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-22 11:06:50.827&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;A-RBNY-57031&lt;/mlsno&gt;&#10;            &lt;k_listBroker/&gt;&#10;            &lt;k_stNo/&gt;&#10;            &lt;k_stDir/&gt;&#10;            &lt;k_streetname/&gt;&#10;            &lt;FineCode&gt;CR250&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Missing Listing&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;-250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent/&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED COMPLETED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-16 09:38:47.16&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-02 12:58:27.647&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-57031&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4693366&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1563327956177082777&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;27&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;72nd&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Personal Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-31754&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-26 16:45:40.427&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-29 12:00:59.187&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-31754&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4698098&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1563327956177082777&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;27&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;72nd&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Personal Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-31754&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-26 16:45:40.427&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-02 21:45:39.563&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-31754&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4698098&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;COMP-1563327956177082777&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-7222&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;27&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;72nd&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 1&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;Personal Information&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;250&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-31754&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-26 16:45:40.427&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-06 13:28:55.697&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-31754&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4698098&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-04-30 13:38:15.48&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-02 21:45:40.55&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-03 06:32:32.557&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;        &lt;row&gt;&#10;            &lt;mlsno&gt;RPLU-33422909455&lt;/mlsno&gt;&#10;            &lt;k_listBroker&gt;RBNY-334&lt;/k_listBroker&gt;&#10;            &lt;k_stNo&gt;114&lt;/k_stNo&gt;&#10;            &lt;k_stDir&gt;W&lt;/k_stDir&gt;&#10;            &lt;k_streetname&gt;71ST&lt;/k_streetname&gt;&#10;            &lt;FineCode&gt;Type 2&lt;/FineCode&gt;&#10;            &lt;VIOLATION_NAME&gt;FHA Violation&lt;/VIOLATION_NAME&gt;&#10;            &lt;FineAmount&gt;500&lt;/FineAmount&gt;&#10;            &lt;k_listAgent&gt;RBNY-53270&lt;/k_listAgent&gt;&#10;            &lt;Workflow_State&gt;FINE WAIVED SYSTEM CORRECTED&lt;/Workflow_State&gt;&#10;            &lt;Violation_Date&gt;2024-04-25 16:15:45.537&lt;/Violation_Date&gt;&#10;            &lt;Notif_Sent&gt;2024-05-03 06:32:55.68&lt;/Notif_Sent&gt;&#10;            &lt;Violating_Agent&gt;RBNY-53270&lt;/Violating_Agent&gt;&#10;            &lt;Violation_no&gt;4697548&lt;/Violation_no&gt;&#10;        &lt;/row&gt;&#10;    &lt;/fine-export&gt;&#10;&lt;/ldc-service&gt;', &quot;application/xml&quot;)]" doc:name="Set Payload" doc:id="b07e65d3-2f80-4772-a8a3-d381df91a841" mimeType="application/xml"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<os:store doc:name="Store" doc:id="9e66412c-bb04-4d34-8bbd-f305fee3a10e" key='#[now() as String {format: "YYYY-MM-dd"}]' objectStore="Object_store">
+			<os:value ><![CDATA[#[now() as String {format: "YYYY-MM-dd 00:00:00"}]]]></os:value>
+		</os:store>
+	
+</sub-flow>
+	<sub-flow name="fetch-ldc-contact-subflow" doc:id="7323ca94-fe6b-4c5d-acea-300acf3f6b51" >
+		<ee:transform doc:name="Set queryAll Param" doc:id="4943396c-e1d0-48df-a8f1-1e427e82a8e0" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var memberIdList = payload."Agent__c" joinBy "', '"
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": "SELECT Id, MemberID__c, AccountId, Account.CompanyCode__c FROM Contact WHERE MemberID__c IN ('$(memberIdList)')"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch Contacts" doc:id="e0c499cf-b38e-4268-ba11-7bdd3390cdc5" name="sf-queryAll-subflow1"/>
+		<ee:transform doc:name="Set Response" doc:id="84cc83f9-a857-4e88-989c-71c1de63962a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload reduce (item, accumulator={}) ->
+	accumulator ++ {
+        (item."MemberID__c"): {
+            "contactId": item."Id",
+            "accountId": item."AccountId",
+            "companyCode": item."Account"."CompanyCode__c"
+        }
+    }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="fetch-ldc-broker-subflow" doc:id="b2c3d4e5-f6a7-8901-bcde-f12345678901" >
+		<ee:transform doc:name="Set queryAll Param" doc:id="c3d4e5f6-a7b8-9012-cdef-012345678901" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var brokerIdList = (payload."Broker_A__c" filter (!isEmpty($))) joinBy "', '"
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": "SELECT Id, MemberID__c FROM Contact WHERE MemberID__c IN ('$(brokerIdList)')"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch Brokers" doc:id="d4e5f6a7-b8c9-0123-defa-123456789012" name="sf-queryAll-subflow1"/>
+		<ee:transform doc:name="Set Response" doc:id="e5f6a7b8-c9d0-1234-efab-234567890123" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload reduce (item, accumulator={}) ->
+	accumulator ++ {(item."MemberID__c"): item."Id"}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="sf-upsert-subflow1" doc:id="1e8dc77e-4554-4b4c-a93a-e35ac659c310" >
+		<logger level="INFO" doc:name="Logger" doc:id="437234c5-153e-4d37-888d-efdab419bc9e" message="Before SF Upsert"/>
+		<salesforce:upsert objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]" doc:name="Upsert" doc:id="0acd996e-7a19-4a4d-918a-4c2e22c2a2df" config-ref="Salesforce_Config_New" >
+			<salesforce:records ><![CDATA[#[output application/java
+---
+vars.sfQuery.records]]]></salesforce:records>
+		</salesforce:upsert>
+		<logger level="INFO" doc:name="Logger" doc:id="e5298dd5-68b3-476a-bc0b-5ddf6478be24" message="After SF Upsert"/>
+	</sub-flow>
+	<sub-flow name="fetch-violation-header-subflow" doc:id="ae8829c2-8dde-4bc3-a126-f7cd78aed176" >
+		<ee:transform doc:name="Set queryAll Param" doc:id="75e3e4fd-901f-44e7-9c58-61144623ece7" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var violationNoList = payload."Violation_Number__c" joinBy "', '"
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": "SELECT Id, Violation_Number__c FROM RLS_Violation_Tracker__c WHERE Violation_Number__c IN ('$(violationNoList)')"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch Violation Header" doc:id="f939dc4b-4e2f-4cad-a369-8a107a29cff1" name="sf-queryAll-subflow1" />
+		<ee:transform doc:name="Set Response" doc:id="15efc29a-4b15-4d7c-9629-ced72368c600" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload reduce (item, accumulator={}) ->
+	accumulator ++ {(item."Violation_Number__c"): item."Id"}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="sf-create-subflow" doc:id="89bf28e1-82b8-44b9-b57d-a3ee35996024" >
+		<logger level="INFO" doc:name="Logger" doc:id="bd94524c-abd8-497a-9016-c907372b395d" />
+		<salesforce:create doc:name="Create" doc:id="8773d242-3152-4733-ae40-bce93734d379" config-ref="Salesforce_Config_New" type='#[vars.sfQuery."recordType"]'>
+			<salesforce:records ><![CDATA[#[vars.sfQuery."records"]]]></salesforce:records>
+		</salesforce:create>
+		<logger level="INFO" doc:name="Logger" doc:id="edd60100-3fa0-454a-92eb-0868e8637252" />
+	</sub-flow>
+	<sub-flow name="sf-queryAll-subflow1" doc:id="a694de27-d973-4775-bd41-5793935ec74c" >
+		<logger level="INFO" doc:name="Logger" doc:id="01cdd1ab-1cda-4a35-98e6-7042f3720ba4" />
+		<salesforce:query-all doc:name="Query all" doc:id="6771db1b-059c-4e5b-bcc9-77d481e403dd" config-ref="Salesforce_Config_New">
+			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery.query]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<logger level="INFO" doc:name="Logger1" doc:id="3bd475b9-b79f-4e51-b332-43068e291137" />
+	</sub-flow>
+	<sub-flow name="update-CL-flag-v2-subflow" doc:id="9f452ff2-49de-40a8-9fad-732e9aeeee04" >
+		<async doc:name="Async" doc:id="f4d1cafe-fd85-40dc-aad2-d845c69877b8" >
+			<ee:transform doc:name="Update CL Update flag to false" doc:id="d1ada776-0bc9-4dcc-adf1-8f4d5c540759" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<foreach doc:name="For Each 200 Units" doc:id="97c20410-ce45-475f-ada1-cd34726a95ce" collection="#[vars.updateSFPayload]" batchSize="200" >
+				<ee:transform doc:name="Transform Message" doc:id="b36c946e-5414-4314-96aa-63b4fb4a99eb" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:update type="Account" doc:name="Update" doc:id="6919a78f-5615-414a-b07a-4c49832fa270" config-ref="Salesforce_Config_v2" />
+				<ee:transform doc:name="Filter Error Response" doc:id="8003701c-5de1-47e4-bb6c-4771eb720380" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="ae3eb4b6-4417-4022-bc55-1e2cfd51fd03" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+			</foreach>
+		</async>
+	</sub-flow>
+	<sub-flow name="common-implSub_Flow" doc:id="a4791925-b553-454a-a832-2105af3323ca" >
+		<scripting:execute doc:name="Execute" doc:id="5049b9cf-f57e-428e-92f3-d1bd32b7dedd" engine="Groovy Scripting Engine">
+			<scripting:code ><![CDATA[import org.mindrot.jbcrypt.BCrypt
+def password = "mySecurePassword"
+// Hash the password with a cost factor of 10
+def hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(10))
+println "Hashed Password: $hashedPassword"]]></scripting:code>
+		</scripting:execute>
+	</sub-flow>
+	<sub-flow name="dos-account-link-subflow" doc:id="d5e6f7a8-b9c0-1234-defa-123456789012">
+		<ee:transform doc:name="Filter firm-type records" doc:id="e6f7a8b9-c0d1-2345-efab-234567890123">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="firmRecords"><![CDATA[%dw 2.0
+output application/java
+var firmTypes = ["REAL ESTATE PRINCIPAL OFFICE", "LIMITED LIABILITY BROKER",
+                 "CORPORATE BROKER", "TRADENAME BROKER",
+                 "REAL ESTATE BRANCH OFFICE", "PARTNERSHIP BROKER"]
+---
+vars.dosBatch filter (
+    (firmTypes contains upper($."license_type" default "")) and
+    !isEmpty($."business_address_1" default "") and
+    !isEmpty($."business_name" default "")
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="f7a8b9c0-d1e2-3456-fabc-345678901234">
+			<when expression="#[isEmpty(vars.firmRecords)]">
+				<logger level="INFO" doc:name="Logger" doc:id="a8b9c0d1-e2f3-4567-abcd-456789012345" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;  "apiName": Mule::p("api.name"),&#10;  "apiVersion": Mule::p("api.version"),&#10;  "correlationId": correlationId,&#10;  "timestamp": now(),&#10;  "message": "DOS Account Link: no firm-type records in batch, skipping"&#10;}]'/>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Build Account SOQL" doc:id="b9c0d1e2-f3a4-5678-bcde-567890123456">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/java
+fun escapeSoql(s: String) = s replace "'" with "\\'"
+var addressList = (vars.firmRecords map ("'" ++ escapeSoql($."business_address_1") ++ "'")) joinBy ","
+var nameList = (vars.firmRecords map ("'" ++ escapeSoql($."business_name") ++ "'")) joinBy ","
+---
+{
+    "query": "SELECT Id, Name, BillingStreet, ParentId FROM Account WHERE BillingStreet IN (" ++ addressList ++ ") OR Name IN (" ++ nameList ++ ")"
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="Query Accounts" doc:id="c0d1e2f3-a4b5-6789-cdef-678901234567" name="sf-queryAll-subflow1"/>
+				<ee:transform doc:name="Build account link payload" doc:id="d1e2f3a4-b5c6-7890-defa-789012345678">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/java
+fun normalizeAddress(s: String) = upper(trim(s replace /[^a-zA-Z0-9 ]/ with "" replace /\s+/ with " "))
+var accountMapByAddress = (payload groupBy normalizeAddress($.BillingStreet default ""))
+    mapObject ((accounts, key) ->
+        (key): ((accounts filter (!isEmpty($.ParentId default "")))[0] default accounts[0]).Id
+    )
+var accountMapByName = (payload groupBy upper($.Name default ""))
+    mapObject ((accounts, key) ->
+        (key): ((accounts filter (!isEmpty($.ParentId default "")))[0] default accounts[0]).Id
+    )
+var updateRecords = vars.firmRecords
+    map {
+        "DOS_License_Number_External_ID__c": $."license_number",
+        "salesforce_Account_link__c":
+            accountMapByAddress[normalizeAddress($."business_address_1" default "")] default
+            accountMapByName[upper($."business_name" default "")]
+    }
+    filter (!isEmpty($.salesforce_Account_link__c))
+---
+{
+    "objType": "DOS_Data__c",
+    "extFieldName": "DOS_License_Number_External_ID__c",
+    "records": updateRecords
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<choice doc:name="Choice" doc:id="e2f3a4b5-c6d7-8901-efab-890123456789">
+					<when expression="#[isEmpty(vars.sfQuery.records)]">
+						<logger level="INFO" doc:name="Logger" doc:id="f3a4b5c6-d7e8-9012-fabc-901234567890" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;  "apiName": Mule::p("api.name"),&#10;  "apiVersion": Mule::p("api.version"),&#10;  "correlationId": correlationId,&#10;  "timestamp": now(),&#10;  "message": "DOS Account Link: no Account matches found in batch, skipping upsert"&#10;}]'/>
+					</when>
+					<otherwise>
+						<logger level="INFO" doc:name="Logger" doc:id="a4b5c6d7-e8f9-0123-abcd-012345678901" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;  "apiName": Mule::p("api.name"),&#10;  "apiVersion": Mule::p("api.version"),&#10;  "correlationId": correlationId,&#10;  "timestamp": now(),&#10;  "message": "DOS Account Link: upserting " ++ (sizeOf(vars.sfQuery.records) as String) ++ " account link(s)"&#10;}]'/>
+						<flow-ref doc:name="Upsert Account Links" doc:id="b5c6d7e8-f9a0-1234-bcde-123456789012" name="sf-upsert-subflow1"/>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</sub-flow>
+
+</mule>

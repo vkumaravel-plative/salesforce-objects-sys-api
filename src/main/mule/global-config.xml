@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+	<apikit:config name="api-config" api="salesforce-objects-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="0b91fda0-439f-46cd-b32f-cd4d3ec9c9eb" file="config/secure-config-${mule.env}.yaml" key="${mule.encryptionKey}"/>
+	<configuration-properties doc:name="Configuration properties" doc:id="1c3acb6a-805c-4c4a-be83-08ac5ab18d20" doc:description="common.yaml" file="config/common.yaml" />
+	<configuration-properties doc:name="Configuration properties" doc:id="f76882fb-8532-410e-8ba5-6224d6ca15ad" doc:description="env-specific yaml" file="config/config-${mule.env}.yaml" />
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="c32a1cbe-f7af-4d6a-a879-ea868786842f" >
+		<http:listener-connection host="${http.host}" port="${http.port}" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="d3c25cdc-7756-4106-a592-4cc16238764c" >
+		<salesforce:oauth-client-credentials-connection >
+			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
+		</salesforce:oauth-client-credentials-connection>
+	</salesforce:sfdc-config>
+	<salesforce:sfdc-config name="Salesforce_Config_v2" doc:name="Salesforce Config" doc:id="6dbd7f50-112d-441f-85ef-a2c8f1a27b36" >
+		<salesforce:oauth-client-credentials-connection >
+			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
+		</salesforce:oauth-client-credentials-connection>
+	</salesforce:sfdc-config>
+	<salesforce:sfdc-config name="Salesforce_Config_New" doc:name="Salesforce Config" doc:id="e0c178ce-c920-43b1-b8dd-ca94b5691122" >
+		<salesforce:oauth-client-credentials-connection >
+			<salesforce:oauth-client-credentials clientId="${secure::salesforce.clientId}" clientSecret="${secure::salesforce.clientSecret}" tokenUrl="${salesforce.tokenUrl}" />
+		</salesforce:oauth-client-credentials-connection>
+	</salesforce:sfdc-config>
+	<api-gateway:autodiscovery apiId="${api.autodiscoveryId}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="3dd1ad0e-6157-42d7-a1f9-40b8ef07f99b" flowRef="api-main" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="62ce6334-ce35-44b7-9f2c-2ff2c746507a" basePath="#[vars.requestParam.basePath]" >
+		<http:request-connection host="#[vars.requestParam.host]" port="#[vars.requestParam.port]" protocol="HTTPS"/>
+	</http:request-config>
+	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="07e7ed72-08e3-4062-b104-5e9df570ab11" >
+		<os:connection >
+			<reconnection />
+		</os:connection>
+	</os:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="017a0325-47b6-47c5-97a8-e148c9629425" config-ref="ObjectStore_Config" entryTtl="24" entryTtlUnit="HOURS" expirationIntervalUnit="HOURS"/>
+</mule>

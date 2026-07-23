@@ -1,0 +1,20 @@
+#%RAML 1.0 SecurityScheme
+type: x-clientid-custom
+description: Custom security scheme through Client-Id Policy enforcement
+describedBy:
+  headers:
+    x-client-id:
+      description: Client Id string
+      required: true
+      minLength: 1
+    x-client-secret:
+      description: Client Secret string
+      required: true
+      minLength: 1
+  responses:
+    401:
+      description: 401 - Unauthorized Access
+      body:
+        application/json:
+          type: string
+          example: "401 - Unauthorized Access"

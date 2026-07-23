@@ -1,0 +1,10 @@
+salesforce:
+  clientId: "![pn/V7HJAL9bhfpEsKWq4B8aM7tab/OY+PSbIEuUDXE/tT0BBETAreUQuKdxTTgziCycCL97FW8839pjihtWSq/IVTpnhsh5iZOVmxH4Vn3CCehNbPK4GLgrMn2vV48dp]"
+  clientSecret: "![Zsgl1dmvTB/tm2P80P1sapOD55VfusLebzsLk/y8M8sMzPbKb4RiSciwSZtf2ZKwRKMxD763xBLG3gaeevKxuJMDbZ3yAsbYYIAqz+JVIFY=]"
+    
+##int cred is non-prod
+##new cred is for v2 endpoint
+
+api:
+  clientId: "![zpGNdMibCuzJeoQt6QBb6HgcZeVHT8B+nHOBudQDE/SvPDGK3Tn/ddL/zhT7ZkG/]"
+  clientSecret: "![32XK4QytWkFYwTyISagtOz30JjG05rzlvlNlpzUSA6UxtaVmVPT7mPEKLttEClzA]"

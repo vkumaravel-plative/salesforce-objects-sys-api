@@ -1,0 +1,1209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+    <flow name="api-main">
+        <http:listener doc:name="Listener" doc:id="38feda03-1730-46aa-88b2-9a2ed8b3cf60" config-ref="HTTP_Listener_config" path="${http.path}">
+            <http:response statusCode="#[vars.statusCode]" />
+            <http:error-response statusCode="#[vars.httpStatus]">
+                <http:body><![CDATA[#[output application/json
+---
+payload]]]></http:body>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="api-config" />
+        <error-handler ref="error-handlerError_Handler" />
+    </flow>
+    <flow name="get:\v1\health-check:api-config" doc:id="3479850b-5a19-4d49-87af-454100424133" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="3e21e4e7-ace3-4fc2-a485-4bd5e0d19943" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of health-check",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set health-check response" doc:id="4be25408-3260-4f7d-8fd7-33fca8816e58" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ "apiName": Mule::p("api.name"),
+ "apiVersion": Mule::p("api.version"),
+ "environment": Mule::p("mule.env"),
+ "correlationId" : correlationId, 
+ "sourceSystem": attributes.headers."x-source-system" default "",
+ "timestamp": now(),
+ "message": "200 OK",
+ "queryFields": attributes.queryParams default ""
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+200]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="ee35b171-cfa1-4ecc-9d45-867b7d46b99a" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "End of health-check",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+	</flow>
+	<flow name="get:\v2\health-check:api-config" doc:id="f4e77a03-547e-4d84-b74a-b5674e55fee8" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="83a65909-2338-4854-970d-016975a4921d" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of health-check v2",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set health-check response" doc:id="f13335f1-ce5f-436a-b71c-978b6c5d3930" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ "apiName": Mule::p("api.name"),
+ "apiVersion": Mule::p("api.version"),
+ "environment": Mule::p("mule.env"),
+ "correlationId" : correlationId, 
+ "sourceSystem": attributes.headers."x-source-system" default "",
+ "timestamp": now(),
+ "message": "v2 - 200 OK",
+ "queryFields": attributes.queryParams default ""
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+200]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="14d5bc13-eaa5-4be1-9fff-105e41e0ef32" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "End of health-check v2",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+	</flow>
+	<flow name="get:\v1\accounts:api-config">
+        <logger level="INFO" doc:name="Start Logger" doc:id="3cd0c343-c18e-495e-bb67-2b04ef5319ee" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;sourceSystem&quot;: attributes.headers.&quot;x-source-system&quot; default &quot;&quot;,&#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Start of Fetch Accounts&quot;,&#xA; &quot;queryFields&quot;: attributes.queryParams default &quot;&quot;&#xA;}]" />
+        <ee:transform doc:name="Set queryFields" doc:id="cea49473-e3d1-4d91-9e50-77582e381767">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set SOQL" doc:id="2f1221e5-adaf-407d-bf02-08184c008aca">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Account" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="54afdc5b-ef8c-493c-9ee0-dbb21e59c2d2" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Before call to Salesforce&quot;,&#xA; &quot;query&quot;: vars.sfQuery default &quot;&quot;&#xA;}]" />
+        <salesforce:query-all doc:name="Query all" doc:id="c2adb878-c2c8-45b2-a955-3071ad41fb9b" config-ref="Salesforce_Config">
+            <salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+        </salesforce:query-all>
+        <choice doc:name="Choice" doc:id="5edee9bf-3930-46d4-a2fd-bfed13f0b23a">
+            <when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]'>
+                <flow-ref doc:name="Update CL Flag" doc:id="37eca004-3c5d-44cd-a476-747331c06cf0" name="update-CL-flag-subflow" />
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Skip Flag Update" doc:id="b919e867-da10-4993-9edf-50bcc55d2f5d" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: if (sizeOf(payload)&gt;0) &quot;CoreLogic Flag update skipped since Id was not queried&quot; else &quot;Query returned 0 entries&quot;&#xA;}]" />
+            </otherwise>
+        </choice>
+        <ee:transform doc:name="Set Response" doc:id="861cf579-c556-4e13-a986-804032aa6993">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="End Logger" doc:id="c36755ae-4c2f-40d4-bf24-814840d65b57" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Query Successful&quot;&#xA;}]" />
+    </flow>
+	<flow name="get:\v2\accounts:api-config" doc:id="09d92cb7-dc63-43f5-bc12-eb90987ac385" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="95b7fc6a-1e4a-43d7-b0b6-03450e195ff9" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Accounts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set queryFields" doc:id="d9a47d90-f446-40fd-b4cb-fd4ffad259c0" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="0486a681-d4f9-495f-a272-0d31dbef8e1f" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Account" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="754ef236-78c0-4bdf-b667-4a9c8392891c" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+		<salesforce:query-all doc:name="Query all" doc:id="3e52b90f-3c00-480c-bdee-213e92cdf330" config-ref="Salesforce_Config_v2" >
+			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<choice doc:name="Choice" doc:id="5d9e12b3-7109-43ce-956f-4b43f8f028d7" >
+			<when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]' >
+				<flow-ref doc:name="Update CL Flag" doc:id="a1189304-a8c3-491c-b47e-20a72ee42624" name="update-CL-flag-v2-subflow" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="2c70ab24-950b-4d02-8eed-3b96c384a47e" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Set Response" doc:id="80ff3578-63d5-466b-9535-5fe1fa870de9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="33b16cc4-5f41-4541-ae53-98e75c4e84dc" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+	</flow>
+	<flow name="get:\v1\contacts:api-config">
+        <logger level="INFO" doc:name="Start Logger" doc:id="814ef56c-45cb-491b-9733-01646d137169" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;sourceSystem&quot;: attributes.headers.&quot;x-source-system&quot; default &quot;&quot;,&#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Start of Fetch Contacts&quot;,&#xA; &quot;queryFields&quot;: attributes.queryParams default &quot;&quot;&#xA;}]" />
+        <ee:transform doc:name="Set queryFields" doc:id="90587963-b41f-4dd6-a677-d6762df87ea0">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set SOQL" doc:id="b6e42dd6-c6b0-4566-a09d-85a4e8274e28">
+            <ee:message />
+            <ee:variables>
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="8fc45047-b517-42c8-9909-a5850460b8ae" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Before call to Salesforce&quot;,&#xA; &quot;query&quot;: vars.sfQuery default &quot;&quot;&#xA;}]" />
+        <salesforce:query-all doc:name="Query all" doc:id="09180306-4682-4d09-9cae-cfb8fab4b779" config-ref="Salesforce_Config">
+            <salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+        </salesforce:query-all>
+        <choice doc:name="Choice" doc:id="61ac364c-c018-4bbb-b152-810bb2c0a0ab" >
+			<when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]'>
+				<async doc:name="Async" doc:id="976ef0db-1b8f-4998-8463-65d291013072">
+            <ee:transform doc:name="Update CL Update flag to false" doc:id="b4154f57-86d9-4069-87ba-c8c1ab6dfc41">
+                <ee:message />
+                <ee:variables>
+                    <ee:set-variable variableName="updateSFPayload"><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+                </ee:variables>
+            </ee:transform>
+            <foreach doc:name="For Each 200 units" doc:id="b81d4e6b-cc62-405f-a6ee-4cd19c199e3f" collection="#[vars.updateSFPayload]" batchSize="200">
+						<ee:transform doc:name="Transform Message" doc:id="81cb204f-3259-4eaa-a9df-7d662e1c062f" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Contact" doc:name="Update" doc:id="539a9cde-e234-4e05-9776-5ef3ec3656e7" config-ref="Salesforce_Config">
+            </salesforce:update>
+						<ee:transform doc:name="Filter Error Response" doc:id="a1a16c18-897e-402f-91a7-45d9bc7437a8">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="5890b044-d160-43f0-a157-9c75eb14b32c" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: if (isEmpty(payload)) &quot;Salesforce Update Successful&quot; else payload&#xA;}]" />
+					</foreach>
+        </async>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="7044ddd9-90c3-4871-8fed-60dd9f80fafb" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+        <ee:transform doc:name="Set Response" doc:id="67b6df00-be7c-4f06-840d-4858204a70bf">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="End Logger" doc:id="84840cfa-67f7-42f2-9573-428daf2a627c" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Query Successful&quot;&#xA;}]" />
+    </flow>
+    <flow name="get:\v2\contacts:api-config" doc:id="504636c5-79e3-4c76-ae7b-300ec61cf6ef" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="11a7787c-6685-4bc3-bb8e-b692b7aaca7e" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Contacts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<choice doc:name="Choice" doc:id="d1994185-7a20-4b51-8d94-5b12cfee9e4c" >
+			<when expression='#[attributes.headers."x-source-system" == "modus"]'>
+				<ee:transform doc:name="Set queryFields" doc:id="d7cd0601-bf39-4227-9f21-fa0079a3ae68" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Set SOQL" doc:id="546c88cd-f223-4cd0-95a6-f60e6059adf4" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT Id, Contact.Id FROM User" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="b74d2510-c54b-4817-8d3d-beaa54570059" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "source": "Modus",&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+				<salesforce:query-all doc:name="Query all" doc:id="b0f08a81-0737-4292-b3b3-6a9a75f8a391" config-ref="Salesforce_Config_v2" >
+					<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+				</salesforce:query-all>
+				<logger level="INFO" doc:name="Logger" doc:id="d72edaa8-18fc-4f4c-9240-589471203fcf" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "source": "Modus",&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "After call to Salesforce",&#10; "response": payload[0]."Contact"."Id" default ""&#10;}]'/>
+				<choice doc:name="Choice" doc:id="5d228cf6-c8bd-45e4-8628-8b304cb3e5ef" >
+					<when expression='#[!(isEmpty(payload[0]."Contact"."Id"))]'>
+						<ee:transform doc:name="Set SOQL" doc:id="897c96ff-8c22-4deb-b7b2-c4aca38666b1" >
+							<ee:message />
+							<ee:variables >
+								<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact WHERE Id='" ++ payload[0]."Contact"."Id" ++ "'"]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+						<salesforce:query-all doc:name="Query all" doc:id="d65cf9c0-089e-4019-a26c-ce2ea0ff3835" config-ref="Salesforce_Config_v2" >
+							<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+						</salesforce:query-all>
+						<ee:transform doc:name="Set Response" doc:id="1504d8a5-6cfe-4449-a4c6-991ffd2001f0" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Set Response" doc:id="f6bbced1-5333-483a-a94b-6639d0effec7" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"No contact found for user"]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+				<logger level="INFO" doc:name="End Logger" doc:id="e8d41e00-df91-4be2-a27e-079da1bd666b" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "source": "Modus",&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Set queryFields" doc:id="5bc77cbf-e010-4862-a368-0c416694188b">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+				<ee:transform doc:name="Set SOQL" doc:id="32154351-ae74-4f00-8007-5f98c0766bef">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="c34a00c1-74c7-428c-972e-67820c67f0fa" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+				<salesforce:query-all doc:name="Query all" doc:id="38944f62-3d3a-4eed-a13e-e692f5a001ed" config-ref="Salesforce_Config_v2">
+			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+				<choice doc:name="Choice" doc:id="09db950c-5adf-4f16-a192-d5104b9f6185">
+			<when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]'>
+				<async doc:name="Async" doc:id="d89239c1-0ede-46e5-a7d2-c7d7278443d0">
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="fd31b0cf-c638-4085-8263-df52701ff203">
+						<ee:message />
+						<ee:variables>
+							<ee:set-variable variableName="updateSFPayload"><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="591f4e2a-e1cd-467e-9dec-02a1d277a7b8" collection="#[vars.updateSFPayload]" batchSize="200">
+						<ee:transform doc:name="Transform Message" doc:id="66190fb5-75b5-4f78-89eb-b836948335e0">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Contact" doc:name="Update" doc:id="0fea0566-835e-4f86-a8e9-b0424042274b" config-ref="Salesforce_Config_v2" />
+						<ee:transform doc:name="Filter Error Response" doc:id="b00f44c2-70b0-44a8-ab52-782615d30235">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="925870c8-0fca-4583-8062-a76d0aadf396" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+			</when>
+					<otherwise>
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="7ef61bde-9cc6-4df2-ba7c-1fd0aa427ab2" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+				<ee:transform doc:name="Set Response" doc:id="c8a395f2-6096-4793-856e-2ebf27786b32">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<logger level="INFO" doc:name="End Logger" doc:id="91e120a7-bb91-481b-a0a7-fbed09ef68c4" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get:\v1\objects:api-config">
+		<logger level="INFO" doc:name="Start Logger" doc:id="abf9dcd6-449f-4c64-9a79-d3b34bf83fef" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Contacts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set Parameters" doc:id="64163d4f-c9fb-4406-9147-49f64b136ec4" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="params" ><![CDATA[%dw 2.0
+output application/json
+var temp = attributes.queryParams."q" splitBy "+"
+---
+{
+	"sfQuery": attributes.queryParams."q" replace "+" with " ",
+	"sourceObject": temp[(indexOf(temp, "FROM"))+1]
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="21b76939-9177-4998-9958-dbc5bf14a7fb" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+		<salesforce:query-all doc:name="Query all" doc:id="3d49a798-08af-4b96-a733-d948257448b5" config-ref="Salesforce_Config" >
+			<salesforce:salesforce-query ><![CDATA[#[vars.params.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<choice doc:name="Choice" doc:id="034cfdef-c36b-4165-8253-8a876861dce2" >
+			<when expression='#[(["Id", "id", "ID", "iD"] contains vars.params.sfQuery) and (sizeOf(payload)&gt;0)]'>
+				<async doc:name="Async" doc:id="3bc51fb2-2c2d-4f72-8ca9-0964ca3fa1e8" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="91a43c0f-8f2a-4268-930a-14997636def1" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="52752bcb-8000-4e45-9723-b5deda3ed40c" collection="#[vars.updateSFPayload]" batchSize="200">
+						<ee:transform doc:name="Transform Message" doc:id="4bb92cf6-b0d3-4731-947a-22a44087439c" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="#[vars.params.sourceObject]" doc:name="Update" doc:id="2178dd20-1fcd-489e-bfd4-1506f1e3fda4" config-ref="Salesforce_Config">
+					</salesforce:update>
+						<ee:transform doc:name="Filter Error Response" doc:id="8e019519-453c-4c9c-b2a6-64ce040f8288">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="94793196-4289-4b2b-9db1-96705c2f300a" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="1e2bc1c8-6245-4403-a6cf-59e21b98bc8b" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Set Response" doc:id="e9d04e8c-6d79-4761-95b3-36cb93de6fd7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json deferred=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="98a273ef-b368-4ae4-a054-a7ce9c2f8053" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+    </flow>
+    <flow name="get:\v2\objects:api-config" doc:id="1c6b6009-cb11-42bb-b2b1-75d90ada37c0" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="1fbce909-f077-43df-a9e4-b3f2d2977e9d" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Contacts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set Parameters" doc:id="3f2d9f41-462f-4b08-9af4-5f1a680453fc" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="params" ><![CDATA[%dw 2.0
+output application/json
+var temp = attributes.queryParams."q" splitBy "+"
+---
+{
+	"sfQuery": attributes.queryParams."q" replace "+" with " ",
+	"sourceObject": temp[(indexOf(temp, "FROM"))+1]
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="aeb7d6a3-55e2-4509-bbb9-e68b21614e06" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+		<salesforce:query-all doc:name="Query all" doc:id="5b393772-4169-4218-9782-a7317ddb984a" config-ref="Salesforce_Config_v2" >
+			<salesforce:salesforce-query ><![CDATA[#[vars.params.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<choice doc:name="Choice" doc:id="5553d7b5-1805-4486-8537-c345b1af092d" >
+			<when expression='#[(["Id", "id", "ID", "iD"] contains vars.params.sfQuery) and (sizeOf(payload)&gt;0)]' >
+				<async doc:name="Async" doc:id="71ccfba7-f336-495d-890b-d3d6a35db8c1" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="5e9ae769-4229-420d-8aea-cdb42a0864e4" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="df23c3a3-0cd7-41f3-b9c0-41c3e3bc0bdb" collection="#[vars.updateSFPayload]" batchSize="200" >
+						<ee:transform doc:name="Transform Message" doc:id="c270e4ef-8bf2-4e5b-a897-ba56c5440492" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="#[vars.params.sourceObject]" doc:name="Update" doc:id="1deabb6e-120f-4640-9ae7-453f47163ddd" config-ref="Salesforce_Config_v2" />
+						<ee:transform doc:name="Filter Error Response" doc:id="8244a63c-1328-4634-9d69-c766ea004f1b" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="f4163340-94f6-41f1-b4e2-124e30aaec18" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="8b4b1691-c2db-4bb0-bbfc-8caea442c5be" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Set Response" doc:id="ddd269e7-daca-4886-8801-4fdc3f439953" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json deferred=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="15b468ea-70ac-4133-9cce-f9a6b99e8461" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+	</flow>
+	<flow name="get:\v1\teamMembers:api-config">
+        <logger level="INFO" doc:name="Start Logger" doc:id="5ca608fb-46ae-4f75-8739-a2e276721170" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;sourceSystem&quot;: attributes.headers.&quot;x-source-system&quot; default &quot;&quot;,&#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Start of Fetch Accounts&quot;,&#xA; &quot;queryFields&quot;: attributes.queryParams default &quot;&quot;&#xA;}]" />
+        <ee:transform doc:name="Set queryFields" doc:id="e13e1818-39f3-4b34-ba9d-8b249c234030">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set SOQL" doc:id="41ce4c8c-5e6d-4f92-bb79-2d91a4f50ee5">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Team_Member__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="48e0afc7-e6ff-4114-9cd8-2a01336282db" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Before call to Salesforce&quot;,&#xA; &quot;query&quot;: vars.sfQuery default &quot;&quot;&#xA;}]" />
+        <salesforce:query-all doc:name="Query all" doc:id="2bd98a41-8af7-4e23-91ed-a6d2a6f1a293" config-ref="Salesforce_Config">
+            <salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+        </salesforce:query-all>
+        <choice doc:name="Choice" doc:id="25c09ad2-a6db-4930-ad2a-f9ec3c4e30ce">
+            <when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]'>
+				<async doc:name="Async" doc:id="dd58337f-49f6-4679-93a5-2355f73c28eb" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="5c629d7a-d6e9-4767-bf35-9f8c5cd993b3" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="e2dc97dd-54af-4f93-b434-396976953465" collection="#[vars.updateSFPayload]" batchSize="200">
+						<ee:transform doc:name="Transform Message" doc:id="2c81b6fa-b995-44d3-b998-e85db7af74cd" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Team_Member__c" doc:name="Update" doc:id="b8c55c64-e397-4bf2-aa55-c2eb56440323" config-ref="Salesforce_Config">
+					</salesforce:update>
+						<ee:transform doc:name="Filter Error Response" doc:id="7cd7828d-341f-4f8b-ae6c-fb5ce49001dd">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="f0b65663-42be-45c4-b26d-9c8a4c83ec2d" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+            </when>
+			<otherwise>
+                <logger level="INFO" doc:name="Skip Flag Update" doc:id="1a945241-78d9-4d95-ac06-f5a3a1eb980b" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: if (sizeOf(payload)&gt;0) &quot;CoreLogic Flag update skipped since Id was not queried&quot; else &quot;Query returned 0 entries&quot;&#xA;}]" />
+            </otherwise>
+        </choice>
+        <ee:transform doc:name="Set Response" doc:id="eabfd3f9-f4db-4c9d-aad1-50c121e69018">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="End Logger" doc:id="7e8fed0c-4049-45d2-ae30-c9fa8632d807" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Query Successful&quot;&#xA;}]" />
+    
+    </flow>
+    <flow name="get:\v2\teamMembers:api-config" doc:id="2ab5ac7a-5f29-43a2-bddd-1ec72c387293" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="a165645a-f61b-40ab-a262-829005643945" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Accounts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set queryFields" doc:id="0a26821a-b9d4-4956-9d8b-08e97b9aeffd" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="5a46b840-83de-4808-8766-8ade48a6b339" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Team_Member__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="dab1dda8-e958-4eca-b9a9-2cf0b41f6426" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+		<salesforce:query-all doc:name="Query all" doc:id="afcb7a53-8b5f-4c52-82be-f7491837f741" config-ref="Salesforce_Config_v2" >
+			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<choice doc:name="Choice" doc:id="20cc1aac-c436-47b1-b5ca-d0837cdba07d" >
+			<when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]' >
+				<async doc:name="Async" doc:id="9d20313a-bbd1-43c1-ac80-88a2fd48851f" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="426f3989-a24c-4fca-9382-ee4a1c4dbe85" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="a4a5b58f-a771-4207-a6a3-feaed22bfa04" collection="#[vars.updateSFPayload]" batchSize="200" >
+						<ee:transform doc:name="Transform Message" doc:id="d8ffaad2-b5d9-4730-bdab-22368d6c7270" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Team_Member__c" doc:name="Update" doc:id="9f6d949b-2d9d-4007-b649-6530aef46ef2" config-ref="Salesforce_Config_v2" />
+						<ee:transform doc:name="Filter Error Response" doc:id="2d93c6b5-cb95-4bee-a80d-6f7a72f074a8" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="c188bcb7-4c5c-4585-8bd3-79c39ff5ac4f" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="a1263775-0dc9-483f-8f71-036a27f86de5" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Set Response" doc:id="57af7663-f3b6-49c5-b47e-0214ca0c531d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="e27da8ba-b420-4361-aec3-eb3ced85f50e" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+	</flow>
+	<flow name="get:\v1\teams:api-config">
+    	<logger level="INFO" doc:name="Start Logger" doc:id="95d8af71-565f-4727-90de-f66ea3350aca" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;sourceSystem&quot;: attributes.headers.&quot;x-source-system&quot; default &quot;&quot;,&#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Start of Fetch Accounts&quot;,&#xA; &quot;queryFields&quot;: attributes.queryParams default &quot;&quot;&#xA;}]" />
+        <ee:transform doc:name="Set queryFields" doc:id="aafa4712-d1e8-4819-a81d-b487523901f7">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Set SOQL" doc:id="1d24667e-6cd4-4dce-bb2f-d72658c9bdb7">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Team__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="03220e43-4891-45b6-9002-8d93e5350398" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Before call to Salesforce&quot;,&#xA; &quot;query&quot;: vars.sfQuery default &quot;&quot;&#xA;}]" />
+        <salesforce:query-all doc:name="Query all" doc:id="05bad42e-61f5-4d70-a497-4f2a132ff26a" config-ref="Salesforce_Config">
+            <salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+        </salesforce:query-all>
+        <choice doc:name="Choice" doc:id="6d80a08b-b420-4fe4-88f1-3be59638c813">
+            <when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]'>
+				<async doc:name="Async" doc:id="354378bc-3a1d-46ae-a346-ab266506d63f" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="c148c1d8-a4ed-462f-9c8e-b762ba559934" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="f4bccffe-1d4f-4aa6-b5bd-3728eabd2e97" collection="#[vars.updateSFPayload]" batchSize="200">
+						<ee:transform doc:name="Transform Message" doc:id="f3fbe2cb-8bcb-45d0-a61f-0884d75265b6" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Team__c" doc:name="Update" doc:id="0b1af797-6d19-4a5c-845d-64b08c3ac8b6" config-ref="Salesforce_Config">
+					</salesforce:update>
+						<ee:transform doc:name="Filter Error Response" doc:id="b72bdeee-eb71-4c38-bf19-0bc8be693daf">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="3d518ce1-de36-458f-9868-d7fdd4594111" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+            </when>
+			<otherwise>
+                <logger level="INFO" doc:name="Skip Flag Update" doc:id="f8f95d0d-06e6-4033-9adf-6f6498cc137c" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: if (sizeOf(payload)&gt;0) &quot;CoreLogic Flag update skipped since Id was not queried&quot; else &quot;Query returned 0 entries&quot;&#xA;}]" />
+            </otherwise>
+        </choice>
+        <ee:transform doc:name="Set Response" doc:id="0f7419d9-6e22-4d9b-8aaa-c358caee3bd1">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="End Logger" doc:id="03304e36-1700-46c9-b248-79f7f4f2a7e2" message="#[%dw 2.0&#xA;output application/json&#xA;---&#xA;{&#xA; &quot;apiName&quot;: Mule::p(&quot;api.name&quot;),&#xA; &quot;apiVersion&quot;: Mule::p(&quot;api.version&quot;),&#xA; &quot;correlationId&quot; : correlationId, &#xA; &quot;timestamp&quot;: now(),&#xA; &quot;message&quot;: &quot;Query Successful&quot;&#xA;}]" />
+    
+    </flow>
+	<flow name="get:\v2\teams:api-config" doc:id="4a61fb21-9dd8-4c5a-8f09-f8b5da9a7168" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="59cd39a1-d5f8-4467-967e-8c8db5092494" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of Fetch Accounts",&#10; "queryFields": attributes.queryParams default ""&#10;}]' />
+		<ee:transform doc:name="Set queryFields" doc:id="5c373770-66a4-41d6-9410-33a15df964f2" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="7d4ad72b-6879-46d7-a5da-128ac88389ff" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/json
+---
+"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Team__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ ")")
+  else
+    ""
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="4b9f61b5-75f8-452b-801b-65d2793d56c8" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Before call to Salesforce",&#10; "query": vars.sfQuery default ""&#10;}]' />
+		<salesforce:query-all doc:name="Query all" doc:id="b33eaa3f-95e1-4491-8d2e-7d2b675282ea" config-ref="Salesforce_Config_v2" >
+			<salesforce:salesforce-query ><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<choice doc:name="Choice" doc:id="82ed37af-84b0-4bdb-945b-156cfeb3598b" >
+			<when expression='#[(vars.queryFields.fieldNames contains "id") and (sizeOf(payload)&gt;0)]' >
+				<async doc:name="Async" doc:id="a66c70f9-9174-4fb9-aa4d-c05f09db8039" >
+					<ee:transform doc:name="Update CL Update flag to false" doc:id="0fc07f69-5bee-4de4-b5e7-a0194e6de4b5" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="updateSFPayload" ><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+---
+payload filter (!(isEmpty($."Id"))) map {
+	"Id": $."Id",
+	"Sync_to_Corelogic__c": false
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<foreach doc:name="For Each 200 units" doc:id="ea69fba3-21a0-4a02-8ed8-bea40ad396c2" collection="#[vars.updateSFPayload]" batchSize="200" >
+						<ee:transform doc:name="Transform Message" doc:id="4836539e-504a-45d4-9443-f8fa9204419c" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:update type="Team__c" doc:name="Update" doc:id="9895a924-55cb-4c3d-bc71-1b113bec0088" config-ref="Salesforce_Config_v2" />
+						<ee:transform doc:name="Filter Error Response" doc:id="e327bc47-f906-47c7-a5b9-7d90aaccd70a" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.items.payload filter ($."success" == false) map {
+    "Id": $."id",
+    "Error": $."errors"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="22585d0c-83ac-4f07-ab9d-c6c248af2c58" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"apiName": Mule::p("api.name"),&#10;	"apiVersion": Mule::p("api.version"),&#10;	"correlationId" : correlationId,	&#10;	"timestamp": now(),&#10;	"message": if (isEmpty(payload)) "Salesforce Update Successful" else payload&#10;}]' />
+					</foreach>
+				</async>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Skip Flag Update" doc:id="4d8e979c-750c-424a-aa13-78f053db3950" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": if (sizeOf(payload)&gt;0) "CoreLogic Flag update skipped since Id was not queried" else "Query returned 0 entries"&#10;}]' />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Set Response" doc:id="a890ee3d-4a2c-41eb-948d-48acbca02720" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="b1db2411-4daf-48a3-a5e8-3701558e1d42" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
+	</flow>
+	<flow name="violation-tracker-flow" doc:id="8ce0012d-ffd4-4fce-9af2-8cb84d67f8d5" >
+		<scheduler doc:name="Scheduler" doc:id="5555bcf5-faae-4c36-a5d5-79ac0b3d9fba" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="MINUTES" />
+			
+</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="102d2aa0-92b5-46e4-ab6e-1c068be7f4eb" />
+		<ee:transform doc:name="Set initial params" doc:id="b59c1746-85f2-40e5-b045-26491e8ebb20" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="initParams" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"osKey": now() as String {format: "YYYY-MM-dd"}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch LDC Violation Tracker" doc:id="02625643-f2b0-4e33-ac92-36f411b70622" name="ldc-violation-tracker-call-subflow" target="violationDet"/>
+		<ee:transform doc:name="Set SF payload" doc:id="9eb1bd23-2c39-4359-ad12-f1d51f3b4734">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+fun stripMemberId(id: String) = if (id contains "-") (id splitBy "-")[1] else id
+fun getNoticeState(fineCode: String, workflowState: String) = do {
+    var t1First = ["1ST NOTIFIED CORRECTABLE", "CORRECTABLE NOTIFIED"]
+    var t1Second = ["FINEABLE", "FINED", "CORRECTABLE FINEABLE", "CORRECTABLE FINED"]
+    var t1Third = ["CORRECTABLE SUBSEQUENT FINEABLE", "CORRECTABLE SUBSEQUENT FINED"]
+    var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
+    var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
+    var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
+    ---
+    if (["Type 1", "TYPE 1"] contains fineCode) (
+        if (t1First contains workflowState) "First Violation"
+        else if (t1Second contains workflowState) "Second Violation"
+        else if (t1Third contains workflowState) "Third Violation"
+        else if (t1Fourth contains workflowState) "Fourth Notice"
+        else null
+    )
+    else if (["Type 2", "TYPE 2"] contains fineCode) (
+        if (t2First contains workflowState) "First Violation"
+        else if (t2Second contains workflowState) "Second Violation"
+        else null
+    )
+    else null
+}
+fun toNotifDateTime(d: String) = do {
+    var parts = d splitBy "."
+    var paddedMillis = ((if (sizeOf(parts) > 1) parts[1] else "000") ++ "000")[0 to 2]
+    ---
+    (parts[0] ++ "." ++ paddedMillis) as LocalDateTime {format: "yyyy-MM-dd HH:mm:ss.SSS"}
+}
+var sortedRows = (vars.violationDet."ldc-service"."fine-export".*"row" orderBy ($."Notif_Sent" default "")) reduce ((item, acc = []) -> [item] ++ acc)
+---
+{
+	"records": sortedRows map {
+	    ("Violation_Type__c": if(["Type 1", "TYPE 1"] contains $.FineCode) "Type 1 RLS Data Violation" else if (["Type 2", "TYPE 2"] contains $.FineCode) "Type 2 FHA Violation" else "") if (!isEmpty($.FineCode)),
+	    "MLS_No__c": $."mlsno",
+	    "Violation_Number__c": $."Violation_no",
+	    "Violation_Wording__c": $."VIOLATION_NAME",
+	    ("SECOND_Listing_Violation_alert_fee__c": now()) if($.FineAmount ~= 250 and (["Type 1", "TYPE 1"] contains $.FineCode)),
+	    ("FIRST_FHA_Violation_alert__c": now()) if($.FineAmount ~= 500 and (["Type 2", "TYPE 2"] contains $.FineCode)),
+	    ("Agent__c": stripMemberId($."k_listAgent")) if (!isEmpty($."k_listAgent")),
+	    ("Broker_A__c": stripMemberId($."k_listBroker")) if (!isEmpty($."k_listBroker")),
+	    "Status_detail__c": $."Workflow_State",
+	    ("Listing_Violation_fixed__c": now()) if ((upper($."Workflow_State") contains "CORRECTED") and ($.FineAmount ~= 250) and (["Type 1", "TYPE 1"] contains $.FineCode)),
+	    ("FIRST_FHA_Violation_fixed__c": now()) if ((upper($."Workflow_State") contains "CORRECTED") and ($.FineAmount ~= 500) and (["Type 2", "TYPE 2"] contains $.FineCode)),
+	    ("Current_Notice_State__c": getNoticeState($.FineCode, $."Workflow_State")) if (!isEmpty(getNoticeState($.FineCode, $."Workflow_State") default "")),
+	    ("Notif_Sent__c": toNotifDateTime($."Notif_Sent")) if (!isEmpty($."Notif_Sent" default ""))
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For set of 200" doc:id="0a1211bf-cbb7-4670-ac56-7c5e113e1e6d" collection='#[payload.records]' batchSize="200">
+			<flow-ref doc:name="Fetch Contacts" doc:id="339544a3-54ec-411a-a72d-7b29192c8c2a" name="fetch-ldc-contact-subflow" target="agentDetails"/>
+			<ee:transform doc:name="Update Agent" doc:id="078a9875-bec1-4a43-a1e7-d5c9bbf41cbc" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> (item - "Agent__c") ++ (
+    if (!isEmpty(item."Agent__c" default "")) {
+        "Agent__c": vars.agentDetails[item."Agent__c"].contactId,
+        "Agent_s_Company__c": vars.agentDetails[item."Agent__c"].accountId,
+        "Company_Code__c": vars.agentDetails[item."Agent__c"].companyCode
+    } else {}
+)]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<flow-ref doc:name="Fetch Broker Contacts" doc:id="f1a2b3c4-d5e6-7890-fabc-123456789abc" name="fetch-ldc-broker-subflow" target="brokerDetails"/>
+			<ee:transform doc:name="Update Broker" doc:id="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> (item - "Broker_A__c") ++ {
+    ("Broker_A__c": vars.brokerDetails[item."Broker_A__c"]) if (!isEmpty(vars.brokerDetails[item."Broker_A__c"] default ""))
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Set Violation Header Upsert Payload" doc:id="f150014c-4b77-4740-851f-31b54b9c7cf2">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"objType": "RLS_Violation_Tracker__c",
+	"extFieldName": "Violation_Number__c",
+	"records": (payload groupBy $.Violation_Number__c) pluck ((value, key) -> value[0])
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Upsert to SF" doc:id="b2f03178-5f22-42b4-a997-5e0f50125e66" name="sf-upsert-subflow1" target="violationHeaderRes"/>
+			<flow-ref doc:name="Fetch Violation Headers" doc:id="5b4bcd51-5892-48d4-8263-88781a3ef016" name="fetch-violation-header-subflow" target="violationHeader" />
+			<ee:transform doc:name="Update Violation Headers" doc:id="1e2c4a82-8ac2-4510-88a2-be06e1ebce04">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> item ++ {
+    "RLS_Violation_Tracker__c": vars.violationHeader[item."Violation_Number__c"]
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="256690da-3e27-429f-a916-fe095dd1ef8f" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"recordType": "RLS_Violations_Line_Item__c",
+	"records": payload map (item) -> item - "Agent_s_Company__c" - "Company_Code__c" - "Broker_A__c" - "SECOND_Listing_Violation_alert_fee__c" - "FIRST_FHA_Violation_alert__c" - "Listing_Violation_fixed__c" - "FIRST_FHA_Violation_fixed__c"
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Create SF Line Items" doc:id="642c8ea3-0875-49f1-9f86-5553109df61a" name="sf-create-subflow" target="violationLineItemRes" />
+		
+</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="7b4830d4-ac91-42c5-96ba-52a5d7aedbb0" />
+		<error-handler ref="error-handlerError_Handler" />
+	</flow>
+	<flow name="dos-integration-flow" doc:id="0bb74ee8-b3d6-4554-8463-969cdc468464" >
+		<scheduler doc:name="Scheduler" doc:id="5120a987-55fa-40b6-a2c8-b86d05b25d5d">
+			<scheduling-strategy>
+				<fixed-frequency frequency="8" timeUnit="HOURS" startDelay="1" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="617c666f-6dca-4872-be8f-20ccbbb1d5f8" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "sourceSystem": attributes.headers."x-source-system" default "",&#10; "timestamp": now(),&#10; "message": "Start of DOS Integration",&#10; "queryFields": attributes.queryParams default ""&#10;}]'/>
+		<ee:transform doc:name="Set Recursion Param" doc:id="b5ce30cc-72d4-4939-a34e-139f2d721237" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="requestParam" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"host": Mule::p("api.host"),
+	"port": Mule::p("api.port"),
+	"method": "GET",
+	"basePath": Mule::p("api.dos.basepath"),
+	"path": "/dos-recursion",
+	"header": {
+		"x-client-id": Mule::p("secure::api.clientId"),
+		"x-client-secret": Mule::p("secure::api.clientSecret"),
+		"x-correlation-id": uuid()
+	},
+	"queryParam": {
+		"offset": 0
+	},
+	"uriParam": {},
+	"body": {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="DOS Recursion" doc:id="fc159483-4e99-4954-aff7-4b5064e5a7bf" name="common-http-call-subflow"/>
+		<error-handler ref="error-handlerError_Handler" />
+	</flow>
+	<flow name="get:\v2\dos-recursion:api-config" doc:id="86090e45-dafb-4199-81e2-19ef093bc7d2" >
+		<flow-ref doc:name="Start DOS Integration" doc:id="121248e6-cb48-4f83-ab20-df2bfd3b980c" name="dos-fetch-data-subflow" />
+	</flow>
+	<flow name="get:\v1\memberDirectory:api-config" doc:id="f7a30fcd-2dd9-4404-a8d8-666d266147c7" >
+		<logger level="INFO" doc:name="Logger" doc:id="d26dfa8d-da17-409e-8d32-4aa12550a47d" />
+		<ee:transform doc:name="Set queryFields" doc:id="2e50ce6a-3c2a-4336-a74e-26ebe97e766d" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="f1b02d98-dadf-4527-98ab-d0378baa11e1" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var hourGap=attributes.queryParams.lastModifiedGap default null
+var tempDate=if(!isEmpty(hourGap)) ((now() >> "America/New_York") - "PT$(hourGap)M") else ""
+var setQuery=if(isEmpty(tempDate)) (
+	 "SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++")")
+  else
+    ""   
+    )   )
+  else (
+  	"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Contact" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ " AND SystemModStamp >= "++ tempDate ++")")
+  else
+    " WHERE (SystemModStamp >=" ++ tempDate ++")"   
+    ) 
+  )
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": setQuery
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Query Salesforce" doc:id="873159e1-016a-4fc8-b131-0ce0cfc5b0ac" name="sf-queryAll-subflow1"/>
+		<ee:transform doc:name="Transform Message" doc:id="4f7d239a-d451-4b1f-bdd1-a12e258e8420" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json writeAttributes=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="get:\v1\committeeMembers:api-config" doc:id="6effe9b9-6f8d-40e4-9f8b-7978c97dc5f4" >
+		<logger level="INFO" doc:name="Logger" doc:id="726e79a3-9d83-4615-a144-45f67406e055" />
+		<ee:transform doc:name="Set queryFields" doc:id="b5554621-94f8-45bc-8699-efce38c30d35" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="8467d6ad-b013-4096-a60f-ef2277d3ba28" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var hourGap=attributes.queryParams.lastModifiedGap default null
+var tempDate=if(!isEmpty(hourGap)) ((now() >> "America/New_York") - "PT$(hourGap)M") else ""
+var setQuery=if(isEmpty(tempDate)) (
+	 "SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Committee_Member__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++")")
+  else
+    ""   
+    )   )
+  else (
+  	"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Committee_Member__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ " AND SystemModStamp >= "++ tempDate ++")")
+  else
+    " WHERE (SystemModStamp >=" ++ tempDate ++")"   
+    ) 
+  )
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": setQuery
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Query Salesforce" doc:id="bedae6b9-29ef-4b5f-9e92-832b36843075" name="sf-queryAll-subflow1"/>
+		<ee:transform doc:name="Transform Message" doc:id="0fe598c7-38cc-487c-963d-db8c54f683c2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json writeAttributes=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="get:\v1\committees:api-config" doc:id="25106ad9-3a23-4e57-adaa-499c420d4abb" >
+		<logger level="INFO" doc:name="Logger" doc:id="23061b67-5442-4f02-ad47-af43b3d33250" />
+		<ee:transform doc:name="Set queryFields" doc:id="788f62ea-cc22-4049-95fa-1a70a0a9038d" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable resource="dwl/Account/setFetchQueryFields.dwl" variableName="queryFields" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Set SOQL" doc:id="35ce4847-4629-4485-bb0f-8498acb1447d" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+var hourGap=attributes.queryParams.lastModifiedGap default null
+var tempDate=if(!isEmpty(hourGap)) ((now() >> "America/New_York") - "PT$(hourGap)M") else ""
+var setQuery=if(isEmpty(tempDate)) (
+	 "SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Committee__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++")")
+  else
+    ""   
+    )   )
+  else (
+  	"SELECT " ++ (vars.queryFields.fieldNames default "") ++ " FROM Committee__c" ++ (
+  if (!isEmpty(vars.queryFields.whereClause)) 
+    (" WHERE (" ++ vars.queryFields.whereClause ++ " AND SystemModStamp >= "++ tempDate ++")")
+  else
+    " WHERE (SystemModStamp >=" ++ tempDate ++")"   
+    ) 
+  )
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"query": setQuery
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Query Salesforce" doc:id="94ee4c85-c29c-4275-884b-6e6183fbde6d" name="sf-queryAll-subflow1"/>
+		<ee:transform doc:name="Transform Message" doc:id="fbbe002f-4b02-4731-b7df-f1674466c0e0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json writeAttributes=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

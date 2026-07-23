@@ -1,0 +1,211 @@
+#%RAML 1.0
+title: Salesforce Objects System API
+description: This API is used to fetch Salesforce Objects
+mediaType: application/json
+
+securitySchemes: 
+  custom-security: !include exchange_modules/6a24cb21-a070-4630-81a9-60e6cd68cdf9/custom-client-id-security-scheme/1.0.1/custom-client-id-security-scheme.raml
+
+securedBy: custom-security
+
+traits:
+  common-headers: !include exchange_modules/6a24cb21-a070-4630-81a9-60e6cd68cdf9/common-headers-trait/1.0.0/common-headers-trait.raml
+  common-error-response: !include exchange_modules/6a24cb21-a070-4630-81a9-60e6cd68cdf9/error-codes-trait/1.0.3/error-codes-trait.raml
+
+
+/v1:
+  /health-check:
+    get:
+      is: [common-headers]
+      description: Get the health of deloyed API
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+  /accounts:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Account objects from Salesforce
+      queryParameters:
+        fieldNames:
+          type: string
+          description: Field names expected in output
+          required: true
+          minLength: 1
+        filterClause:
+          type: string
+          description: Conditions to filter output
+          required: false
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                
+  /contacts:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Contact objects from Salesforce
+      queryParameters:
+        fieldNames:
+          type: string
+          description: Field names expected in output
+          required: true
+          minLength: 1
+        filterClause:
+          type: string
+          description: Conditions to filter output
+          required: false
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+    
+  /teams:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Team objects from Salesforce
+
+  /teamMembers:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Team-Member objects from Salesforce
+  
+  /objects:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Salesforce objects
+      queryParameters:
+        q:
+          type: string
+          description: SOQL query
+          required: true
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              type: any
+              
+  /memberDirectory:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Contact records from Salesforce
+      queryParameters:
+        lastModifiedGap:
+          description: This query parameter helps us fetch records modified in the last N minutes.
+          type: string
+          pattern: ^\+?[1-9]\d*$
+          required: false
+
+  /committeeMembers:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Committee Member records from Salesforce
+      queryParameters:
+        lastModifiedGap:
+          description: This query parameter helps us fetch records modified in the last N minutes.
+          type: string
+          pattern: ^\+?[1-9]\d*$
+          required: false
+  
+  /committees:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Committee records from Salesforce
+      queryParameters:
+        lastModifiedGap:
+          description: This query parameter helps us fetch records modified in the last N minutes.
+          type: string
+          pattern: ^\+?[1-9]\d*$
+          required: false
+/v2:
+  /dos-recursion:
+    get:
+      is: [common-headers]
+      description: Performs DOS recursion, replacement for VM Queue
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+  /health-check:
+    get:
+      is: [common-headers]
+      description: Get the health of deloyed API
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+  /accounts:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Account objects from Salesforce
+      queryParameters:
+        fieldNames:
+          type: string
+          description: Field names expected in output
+          required: true
+          minLength: 1
+        filterClause:
+          type: string
+          description: Conditions to filter output
+          required: false
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                
+  /contacts:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Contact objects from Salesforce
+      queryParameters:
+        fieldNames:
+          type: string
+          description: Field names expected in output
+          required: true
+          minLength: 1
+        filterClause:
+          type: string
+          description: Conditions to filter output
+          required: false
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+    
+  /teams:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Team objects from Salesforce
+
+  /teamMembers:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Team-Member objects from Salesforce
+  
+  /objects:
+    get:
+      is: [common-error-response, common-headers]
+      description: Fetch Salesforce objects
+      queryParameters:
+        q:
+          type: string
+          description: SOQL query
+          required: true
+          minLength: 1
+      responses:
+        200:
+          body:
+            application/json:
+              type: any
