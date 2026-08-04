@@ -864,7 +864,7 @@ payload]]></ee:set-payload>
 		</ee:transform>
 		<logger level="INFO" doc:name="End Logger" doc:id="b1db2411-4daf-48a3-a5e8-3701558e1d42" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
 	</flow>
-	<flow name="violation-tracker-flow" doc:id="8ce0012d-ffd4-4fce-9af2-8cb84d67f8d5" >
+	<flow name="violation-tracker-fine-flow" doc:id="8ce0012d-ffd4-4fce-9af2-8cb84d67f8d5" >
 		<scheduler doc:name="Scheduler" doc:id="5555bcf5-faae-4c36-a5d5-79ac0b3d9fba" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="MINUTES" />
@@ -872,6 +872,7 @@ payload]]></ee:set-payload>
 </scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Logger" doc:id="102d2aa0-92b5-46e4-ab6e-1c068be7f4eb" />
+		<set-variable value="/fine-export" doc:name="Set path" doc:id="84d00f3e-4cf5-492c-86d2-2f55f6e6eef0" variableName="path" />
 		<ee:transform doc:name="Set initial params" doc:id="b59c1746-85f2-40e5-b045-26491e8ebb20" >
 			<ee:message >
 			</ee:message>
@@ -1016,6 +1017,162 @@ output application/java
 </foreach>
 		<logger level="INFO" doc:name="Logger" doc:id="7b4830d4-ac91-42c5-96ba-52a5d7aedbb0" />
 		<error-handler ref="error-handlerError_Handler" />
+	</flow>
+	<flow name="violation-tracker-notification-flow" doc:id="773da606-a32a-4ffb-b6ed-3ee92d5550ac" >
+		<scheduler doc:name="Scheduler" doc:id="2cbad79d-a3da-4589-a85c-3060df15f985" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="MINUTES" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="start logger" doc:id="d56515b3-0e80-4ac2-b09c-be1a0974d21e" message='#[flow.name] started with correlationId: #[correlationId]'/>
+		<set-variable value="/notification-export" doc:name="Set path" doc:id="5d513542-86ec-46ba-8f17-e1168039a1ad" variableName="path"/>
+		<ee:transform doc:name="Set initial params" doc:id="9a56c379-242d-4fa1-ace4-ea0242d45b3c" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="initParams" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"osKey": now() as String {format: "YYYY-MM-dd"}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Fetch LDC Violation Tracker" doc:id="e5975566-ced9-4e56-8f82-c81121996d3e" name="ldc-violation-tracker-call-subflow" target="violationDet" />
+		<ee:transform doc:name="Set SF payload" doc:id="f5d8bb43-111d-4cba-b068-61f55c1f3f3f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+fun stripMemberId(id: String) = if (id contains "-") (id splitBy "-")[1] else id
+fun getNoticeState(fineCode: String, workflowState: String) = do {
+    var t1First = ["1ST NOTIFIED CORRECTABLE", "CORRECTABLE NOTIFIED"]
+    var t1Second = ["FINEABLE", "FINED", "CORRECTABLE FINEABLE", "CORRECTABLE FINED"]
+    var t1Third = ["CORRECTABLE SUBSEQUENT FINEABLE", "CORRECTABLE SUBSEQUENT FINED"]
+    var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
+    var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
+    var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
+    ---
+    if (["Type 1", "TYPE 1"] contains fineCode) (
+        if (t1First contains workflowState) "First Violation"
+        else if (t1Second contains workflowState) "Second Violation"
+        else if (t1Third contains workflowState) "Third Violation"
+        else if (t1Fourth contains workflowState) "Fourth Notice"
+        else null
+    )
+    else if (["Type 2", "TYPE 2"] contains fineCode) (
+        if (t2First contains workflowState) "First Violation"
+        else if (t2Second contains workflowState) "Second Violation"
+        else null
+    )
+    else null
+}
+fun toNotifDateTime(d: String) = do {
+    var parts = d splitBy "."
+    var paddedMillis = ((if (sizeOf(parts) > 1) parts[1] else "000") ++ "000")[0 to 2]
+    ---
+    ((parts[0] ++ "." ++ paddedMillis) as LocalDateTime {format: "yyyy-MM-dd HH:mm:ss.SSS"})
+        as DateTime {timezone: "America/New_York"}
+        >> "UTC" as String {format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"}
+}
+var sortedRows = (vars.violationDet."ldc-service"."notification-export".*"row" orderBy ($."NotificationHis" default "")) reduce ((item, acc = []) -> [item] ++ acc)
+---
+{
+    "records": sortedRows map {
+        ("Violation_Type__c": if (["Type 1", "TYPE 1"] contains $.FineCode) "Type 1 RLS Data Violation" else if (["Type 2", "TYPE 2"] contains $.FineCode) "Type 2 FHA Violation" else "") if (!isEmpty($.FineCode)),
+        "MLS_No__c": $."mlsno",
+        "Violation_Number__c": $."ViolationNumber",
+        "Violation_Wording__c": $."ViolationName",
+        //"Notification__c": $."Notification",
+        //("Street_Address__c": [$."stnumber", $."stdirection", $."stname"] filter (!isEmpty($)) joinBy " ") if (!isEmpty($."stnumber") or !isEmpty($."stname")),
+        ("SECOND_Listing_Violation_alert_fee__c": now() as Date) if ($.FineAmount ~= 250 and (["Type 1", "TYPE 1"] contains $.FineCode)),
+        ("FIRST_FHA_Violation_alert__c": now() as Date) if ($.FineAmount ~= 500 and (["Type 2", "TYPE 2"] contains $.FineCode)),
+        ("Agent__c": stripMemberId($."ListAgent")) if (!isEmpty($."ListAgent")),
+        //("Violating_Agent__c": stripMemberId($."ViolatingAgent")) if (!isEmpty($."ViolatingAgent")),
+        ("Broker_A__c": stripMemberId($."k_listBroker")) if (!isEmpty($."k_listBroker")),
+        "Status_detail__c": $."Name",
+        ("Listing_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 250) and (["Type 1", "TYPE 1"] contains $.FineCode)),
+        ("FIRST_FHA_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 500) and (["Type 2", "TYPE 2"] contains $.FineCode)),
+        ("Current_Notice_State__c": getNoticeState($.FineCode default "", $."Name" default "")) if (!isEmpty(getNoticeState($.FineCode default "", $."Name" default "") default "")),
+        //("Violation_Date__c": toNotifDateTime($."ViolationDate")) if (!isEmpty($."ViolationDate" default "")),
+        ("Notif_Sent__c": toNotifDateTime($."NotificationHis")) if (!isEmpty($."NotificationHis" default ""))
+    }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For set of 20" doc:id="e8d16cf3-52bd-4208-ab30-db7308781a6f" collection="#[payload.records]" batchSize="200" >
+			<flow-ref doc:name="Fetch Contacts" doc:id="76a7cb30-e646-4aa1-bc6f-45a853a79472" name="fetch-ldc-contact-subflow" target="agentDetails" />
+			<ee:transform doc:name="Update Agent" doc:id="9abbca11-55e8-435b-9baa-666ed0ef1fca" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> (item - "Agent__c") ++ (
+    if (!isEmpty(item."Agent__c" default "")) {
+        "Agent__c": vars.agentDetails[item."Agent__c"].contactId,
+        "Agent_s_Company__c": vars.agentDetails[item."Agent__c"].accountId,
+        "Company_Code__c": vars.agentDetails[item."Agent__c"].companyCode
+    } else {}
+)]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<flow-ref doc:name="Fetch Broker Contacts" doc:id="91e5e90f-cfe3-4ada-a32e-be7ecb6cde91" name="fetch-ldc-broker-subflow" target="brokerDetails" />
+			<ee:transform doc:name="Update Broker" doc:id="913750da-3611-43db-bdd1-6e8c48880c61" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> (item - "Broker_A__c") ++ {
+    ("Broker_A__c": vars.brokerDetails[item."Broker_A__c"]) if (!isEmpty(vars.brokerDetails[item."Broker_A__c"] default ""))
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Set Violation Header Upsert Payload" doc:id="88277ecf-841d-4060-8a75-853aebda8467" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"objType": "RLS_Violation_Tracker__c",
+	"extFieldName": "Violation_Number__c",
+	"records": ((payload groupBy $.Violation_Number__c) pluck ((value, key) -> value[0]))
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Upsert to SF" doc:id="8e38032d-3a3f-42d9-8923-788daa7e16d6" name="sf-upsert-subflow1" target="violationHeaderRes" />
+			<flow-ref doc:name="Fetch Violation Headers" doc:id="b6e57292-0105-4cf0-a2ae-112f5c1bb426" name="fetch-violation-header-subflow" target="violationHeader" />
+			<ee:transform doc:name="Update Violation Headers" doc:id="1f89ba69-5bf0-433e-b650-1028595d110b" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map (item, index) -> item ++ {
+    "RLS_Violation_Tracker__c": vars.violationHeader[item."Violation_Number__c"]
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="e8f5c827-78ee-4c14-9957-5953c13d83d1" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"username": Mule::p("secure::salesforce.new.username"), //Mule::p("secure::salesforce.int.username") for non-prod
+	"password": Mule::p("secure::salesforce.new.password"),
+	"token": Mule::p("secure::salesforce.new.token"),
+	"authUrl": Mule::p("salesforce.authUrl"),
+	"recordType": "RLS_Violations_Line_Item__c",
+	"records": (payload map (item) -> item - "Agent_s_Company__c" - "Company_Code__c" - "Broker_A__c")
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Create SF Line Items" doc:id="7fb08b0f-26ed-40ae-8543-de6f0168a882" name="sf-create-subflow" target="violationLineItemRes" />
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="aaa81a74-b128-4d68-888b-969e77bbd495" />
 	</flow>
 	<flow name="dos-integration-flow" doc:id="0bb74ee8-b3d6-4554-8463-969cdc468464" >
 		<scheduler doc:name="Scheduler" doc:id="5120a987-55fa-40b6-a2c8-b86d05b25d5d">

@@ -196,7 +196,7 @@ output application/json
 	</sub-flow>
 	<sub-flow name="common-http-call-subflow" doc:id="c58de746-2549-4166-b627-0a59682b42fd" >
 		<logger level="INFO" doc:name="Logger" doc:id="a3b5fbd4-9fce-491a-b645-95351ca635b1" message="Before HTTP Request"/>
-		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="6ec4cb27-4b54-4cae-ace2-a00a4fa03e0e" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration">
+		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="6ec4cb27-4b54-4cae-ace2-a00a4fa03e0e" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration" responseTimeout="300000">
 			<http:body ><![CDATA[#[vars.requestParam.body default {}]]]></http:body>
 			<http:headers ><![CDATA[#[vars.requestParam.header default {}]]]></http:headers>
 			<http:uri-params ><![CDATA[#[vars.requestParam.uriParam default {}]]]></http:uri-params>
@@ -270,12 +270,14 @@ output application/json
 	"port": "443",
 	"method": "GET",
 	"basePath": "/ldcservice",
-	"path": "/fine-export",
+	"path": vars.path,
 	"header": {
 		"accountId": Mule::p("ldc.accountId"),
 		"key": payload,
 		"beginDate": vars.beginDate,//"2024-01-01 00:00:00",//"2025-07-07 00:00:00",
-		"endDate": now() as String {format: "YYYY-MM-dd 23:59:59"}
+		"endDate": now() as String {format: "YYYY-MM-dd 23:59:59"},
+        ("exportName": "LDCG1") if(vars.path contains "notification"),
+        //("violationNotes": "Y") if(vars.path contains "notification")		
 	},
 	"queryParam": {},
 	"uriParam": {},
