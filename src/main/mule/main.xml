@@ -1074,6 +1074,23 @@ fun toNotifDateTime(d: String) = do {
         >> "UTC" as String {format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"}
 }
 var sortedRows = (vars.violationDet."ldc-service"."notification-export".*"row" orderBy ($."NotificationHis" default "")) reduce ((item, acc = []) -> [item] ++ acc)
+fun stripHtml(html: String) =
+    (html default "")
+        replace /<br\s*\/?>/ with "\n"
+        replace /<\/p>/ with "\n"
+        replace /<[^>]*>/ with ""
+        replace "&nbsp;" with " "
+        replace "&amp;" with "&"
+        replace /\n{2,}/ with "\n"
+fun buildNotes(row: Any) = (
+    (row.notes.*note default [])
+        filter ($."notification-flag" == "Y")
+        orderBy $."created-date"
+) reduce ((note, acc = "") ->
+    acc ++ (if (isEmpty(acc)) "" else "\n---\n")
+        ++ "[" ++ ((note."created-date" as String)[0 to 18]) ++ "] "
+        ++ trim(stripHtml(note."note-text"))
+)
 ---
 {
     "records": sortedRows map {
@@ -1093,7 +1110,8 @@ var sortedRows = (vars.violationDet."ldc-service"."notification-export".*"row" o
         ("FIRST_FHA_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 500) and (["Type 2", "TYPE 2"] contains $.FineCode)),
         ("Current_Notice_State__c": getNoticeState($.FineCode default "", $."Name" default "")) if (!isEmpty(getNoticeState($.FineCode default "", $."Name" default "") default "")),
         //("Violation_Date__c": toNotifDateTime($."ViolationDate")) if (!isEmpty($."ViolationDate" default "")),
-        ("Notif_Sent__c": toNotifDateTime($."NotificationHis")) if (!isEmpty($."NotificationHis" default ""))
+        ("Notif_Sent__c": toNotifDateTime($."NotificationHis")) if (!isEmpty($."NotificationHis" default "")),
+        ("Note_Notification_LDC__c": buildNotes($)) if (!isEmpty(buildNotes($) default "")),
     }
 }]]></ee:set-payload>
 			</ee:message>
@@ -1138,7 +1156,7 @@ output application/java
 	"authUrl": Mule::p("salesforce.authUrl"),
 	"objType": "RLS_Violation_Tracker__c",
 	"extFieldName": "Violation_Number__c",
-	"records": ((payload groupBy $.Violation_Number__c) pluck ((value, key) -> value[0]))
+    "records": (((payload groupBy $.Violation_Number__c) pluck ((value, key) -> value[0])) map ($ - "Note_Notification_LDC__c"))
 }]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
