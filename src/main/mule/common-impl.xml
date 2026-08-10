@@ -195,17 +195,17 @@ output application/json
 		<flow-ref doc:name="Fetch DOS data" doc:id="f714e504-6a17-4c58-aa50-72df4a36e748" name="common-http-call-subflow" />
 	</sub-flow>
 	<sub-flow name="common-http-call-subflow" doc:id="c58de746-2549-4166-b627-0a59682b42fd" >
-		<logger level="INFO" doc:name="Logger" doc:id="a3b5fbd4-9fce-491a-b645-95351ca635b1" message="Before HTTP Request"/>
+		<logger level="INFO" doc:name="Start Logger" doc:id="a3b5fbd4-9fce-491a-b645-95351ca635b1" message="Before HTTP Request with #[vars.requestParam.host] with correlationId: #[correlationId]"/>
 		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="6ec4cb27-4b54-4cae-ace2-a00a4fa03e0e" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration" responseTimeout="300000">
 			<http:body ><![CDATA[#[vars.requestParam.body default {}]]]></http:body>
 			<http:headers ><![CDATA[#[vars.requestParam.header default {}]]]></http:headers>
 			<http:uri-params ><![CDATA[#[vars.requestParam.uriParam default {}]]]></http:uri-params>
 			<http:query-params ><![CDATA[#[vars.requestParam.queryParam default {}]]]></http:query-params>
 		</http:request>
-		<logger level="INFO" doc:name="Logger" doc:id="d95410f4-27f7-4151-bc90-597ffb9d68e8" message="After HTTP Request"/>
+		<logger level="INFO" doc:name="End Logger" doc:id="d95410f4-27f7-4151-bc90-597ffb9d68e8" message="After HTTP Request with correlationId: #[correlationId]"/>
 	</sub-flow>
 	<sub-flow name="common-http-urlencoded-call-subflow" doc:id="a3f98c92-3d11-418a-af51-6191b7d9665f" >
-		<logger level="INFO" doc:name="Logger" doc:id="95547221-1fc4-4a6e-b645-f5f6f4af3e1f" />
+		<logger level="INFO" doc:name="Start Logger" doc:id="95547221-1fc4-4a6e-b645-f5f6f4af3e1f" message="Before HTTP Request with #[vars.requestParam.host] with correlationId: #[correlationId]"/>
 		<http:request method="#[vars.requestParam.method]" doc:name="Request" doc:id="f382a7a3-ad92-4fd3-b289-402acdf2085c" path="#[vars.requestParam.path]" config-ref="HTTP_Request_configuration">
 			<http:body ><![CDATA[#[%dw 2.0
 output application/x-www-form-urlencoded
@@ -215,23 +215,23 @@ vars.requestParam.body default {}]]]></http:body>
 			<http:uri-params ><![CDATA[#[vars.requestParam.uriParam default {}]]]></http:uri-params>
 			<http:query-params ><![CDATA[#[vars.requestParam.queryParam default {}]]]></http:query-params>
 		</http:request>
-		<logger level="INFO" doc:name="Logger" doc:id="5686a366-e229-46ca-8f9e-ab07c906787a" />
+		<logger level="INFO" doc:name="End Logger" doc:id="5686a366-e229-46ca-8f9e-ab07c906787a" message="After HTTP Request with correlationId: #[correlationId]"/>
 	</sub-flow>
 	<sub-flow name="sf-queryAll-subflow" doc:id="4ebd0bfb-6882-4e05-a623-8c764c5d7e55" >
-		<logger level="INFO" doc:name="Logger" doc:id="6507e5ea-b8d0-4695-b988-a9305737d914" />
+		<logger level="INFO" doc:name="Start Logger" doc:id="ddf722a0-e3dc-49a0-bfde-4751de18cb16" message="sf-query-all-started with correlationId: #[correlationId]" />
 		<salesforce:query-all doc:name="Query all" doc:id="cb9b383d-861e-49f8-843c-9c9536840add" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
-		<logger level="INFO" doc:name="Logger" doc:id="aa52106f-1b11-4e6b-863f-645b5338b6ac" />
+		<logger level="INFO" doc:name="End Logger" doc:id="7389bea7-dcaf-402c-a7c5-5209ea72c48f" message="Query All ended with correlationId: #[correlationId]" />
 	</sub-flow>
 	<sub-flow name="sf-upsert-subflow" doc:id="b9cf4c91-9d4e-4577-a569-f27089f56586" >
-		<logger level="INFO" doc:name="Logger" doc:id="38cb46d7-b37f-4a7f-9a9b-7f7665a032f0" />
+		<logger level="INFO" doc:name="start Logger" doc:id="16b487d5-9761-45df-a849-f92510122e14" message="sf-upsert-started with correlationId: #[correlationId]" />
 		<salesforce:upsert doc:name="Upsert" doc:id="8bede94c-fae2-4a9c-8d00-f388952d7d2a" config-ref="Salesforce_Config" objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]">
 			<salesforce:records ><![CDATA[#[output application/java
 ---
 vars.sfQuery.records]]]></salesforce:records>
 		</salesforce:upsert>
-		<logger level="INFO" doc:name="Logger" doc:id="6f4b38bb-078f-45b8-b33b-d4d937a968eb" />
+		<logger level="INFO" doc:name="End Logger" doc:id="51b339a9-92d1-4e0c-9667-01a7c5201dc6" message="sf-upsert-ended with results #[%dw 2.0 output application/json --- payload.items default [] map ((result, index) -&gt; { success: result.successful, success: result.successful, id: result.id, errors: result.message})] with correlationId: #[correlationId]" />
 	</sub-flow>
 	<sub-flow name="ldc-violation-tracker-call-subflow" doc:id="da808669-c586-43a6-92be-6ac2afe16955" >
 		<os:retrieve doc:name="Retrieve" doc:id="2d7ed222-c11d-43b2-bf23-0aa14bb88b80" objectStore="Object_store" key="#[vars.initParams.osKey]" target="beginDate">
@@ -293,6 +293,7 @@ output application/json
 				</on-error-continue>
 			</error-handler>
 		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="e3b66966-0d65-478a-ae0e-6fdebc986e88" />
 		<os:store doc:name="Store" doc:id="9e66412c-bb04-4d34-8bbd-f305fee3a10e" key='#[now() as String {format: "YYYY-MM-dd"}]' objectStore="Object_store">
 			<os:value ><![CDATA[#[now() as String {format: "YYYY-MM-dd 00:00:00"}]]]></os:value>
 		</os:store>
@@ -361,13 +362,13 @@ payload reduce (item, accumulator={}) ->
 		</ee:transform>
 	</sub-flow>
 	<sub-flow name="sf-upsert-subflow1" doc:id="1e8dc77e-4554-4b4c-a93a-e35ac659c310" >
-		<logger level="INFO" doc:name="Logger" doc:id="437234c5-153e-4d37-888d-efdab419bc9e" message="Before SF Upsert"/>
+		<logger level="INFO" doc:name="start Logger" doc:id="c84a2af5-8d18-443f-ac60-79cba1474619" message="sf-upsert-started with correlationId: #[correlationId]" />
 		<salesforce:upsert objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]" doc:name="Upsert" doc:id="0acd996e-7a19-4a4d-918a-4c2e22c2a2df" config-ref="Salesforce_Config" >
 			<salesforce:records ><![CDATA[#[output application/java
 ---
 vars.sfQuery.records]]]></salesforce:records>
 		</salesforce:upsert>
-		<logger level="INFO" doc:name="Logger" doc:id="e5298dd5-68b3-476a-bc0b-5ddf6478be24" message="After SF Upsert"/>
+		<logger level="INFO" doc:name="End Logger" doc:id="d35fe01e-9e48-407c-9b1f-72deab514741" message="sf-upsert-ended with results #[%dw 2.0 output application/json --- payload.items default [] map ((result, index) -&gt; { success: result.successful, success: result.successful, id: result.id, errors: result.message})] with correlationId: #[correlationId]" />
 	</sub-flow>
 	<sub-flow name="fetch-violation-header-subflow" doc:id="ae8829c2-8dde-4bc3-a126-f7cd78aed176" >
 		<ee:transform doc:name="Set queryAll Param" doc:id="75e3e4fd-901f-44e7-9c58-61144623ece7" >
@@ -398,18 +399,18 @@ payload reduce (item, accumulator={}) ->
 		</ee:transform>
 	</sub-flow>
 	<sub-flow name="sf-create-subflow" doc:id="89bf28e1-82b8-44b9-b57d-a3ee35996024" >
-		<logger level="INFO" doc:name="Logger" doc:id="bd94524c-abd8-497a-9016-c907372b395d" />
+		<logger level="INFO" doc:name="start Logger" doc:id="bd94524c-abd8-497a-9016-c907372b395d" message="sf-create-started with correlationId: #[correlationId]"/>
 		<salesforce:create doc:name="Create" doc:id="8773d242-3152-4733-ae40-bce93734d379" config-ref="Salesforce_Config" type='#[vars.sfQuery."recordType"]'>
 			<salesforce:records ><![CDATA[#[vars.sfQuery."records"]]]></salesforce:records>
 		</salesforce:create>
-		<logger level="INFO" doc:name="Logger" doc:id="edd60100-3fa0-454a-92eb-0868e8637252" />
+		<logger level="INFO" doc:name="End Logger" doc:id="edd60100-3fa0-454a-92eb-0868e8637252" message="sf-create-ended with results #[%dw 2.0 output application/json --- payload.items default [] map ((result, index) -&gt; { success: result.successful, success: result.successful, id: result.id, errors: result.message})] with correlationId: #[correlationId]"/>
 	</sub-flow>
 	<sub-flow name="sf-queryAll-subflow1" doc:id="a694de27-d973-4775-bd41-5793935ec74c" >
-		<logger level="INFO" doc:name="Logger" doc:id="01cdd1ab-1cda-4a35-98e6-7042f3720ba4" />
+		<logger level="INFO" doc:name="Start Logger" doc:id="01cdd1ab-1cda-4a35-98e6-7042f3720ba4" message="sf-query-all-started with correlationId: #[correlationId]"/>
 		<salesforce:query-all doc:name="Query all" doc:id="6771db1b-059c-4e5b-bcc9-77d481e403dd" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query><![CDATA[#[vars.sfQuery.query]]]></salesforce:salesforce-query>
 		</salesforce:query-all>
-		<logger level="INFO" doc:name="Logger1" doc:id="3bd475b9-b79f-4e51-b332-43068e291137" />
+		<logger level="INFO" doc:name="End Logger" doc:id="3bd475b9-b79f-4e51-b332-43068e291137" message="Query All ended with correlationId: #[correlationId]"/>
 	</sub-flow>
 	<sub-flow name="update-CL-flag-v2-subflow" doc:id="9f452ff2-49de-40a8-9fad-732e9aeeee04" >
 		<async doc:name="Async" doc:id="f4d1cafe-fd85-40dc-aad2-d845c69877b8" >

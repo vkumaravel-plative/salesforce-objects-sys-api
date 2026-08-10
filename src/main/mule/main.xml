@@ -1015,7 +1015,7 @@ output application/java
 			<flow-ref doc:name="Create SF Line Items" doc:id="642c8ea3-0875-49f1-9f86-5553109df61a" name="sf-create-subflow" target="violationLineItemRes" />
 		
 </foreach>
-		<logger level="INFO" doc:name="Logger" doc:id="7b4830d4-ac91-42c5-96ba-52a5d7aedbb0" />
+		<logger level="INFO" doc:name="End Logger" doc:id="7b4830d4-ac91-42c5-96ba-52a5d7aedbb0" message="#[flow.name] ended with correlationId: #[correlationId]"/>
 		<error-handler ref="error-handlerError_Handler" />
 	</flow>
 	<flow name="violation-tracker-notification-flow" doc:id="773da606-a32a-4ffb-b6ed-3ee92d5550ac" >
@@ -1190,7 +1190,8 @@ output application/java
 			</ee:transform>
 			<flow-ref doc:name="Create SF Line Items" doc:id="7fb08b0f-26ed-40ae-8543-de6f0168a882" name="sf-create-subflow" target="violationLineItemRes" />
 		</foreach>
-		<logger level="INFO" doc:name="Logger" doc:id="aaa81a74-b128-4d68-888b-969e77bbd495" />
+		<logger level="INFO" doc:name="End Logger" doc:id="aaa81a74-b128-4d68-888b-969e77bbd495" message="#[flow.name] ended with correlationId: #[correlationId]"/>
+		<error-handler ref="error-handlerError_Handler" />
 	</flow>
 	<flow name="dos-integration-flow" doc:id="0bb74ee8-b3d6-4554-8463-969cdc468464" >
 		<scheduler doc:name="Scheduler" doc:id="5120a987-55fa-40b6-a2c8-b86d05b25d5d">
