@@ -865,7 +865,7 @@ payload]]></ee:set-payload>
 		<logger level="INFO" doc:name="End Logger" doc:id="b1db2411-4daf-48a3-a5e8-3701558e1d42" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; "apiName": Mule::p("api.name"),&#10; "apiVersion": Mule::p("api.version"),&#10; "correlationId" : correlationId, &#10; "timestamp": now(),&#10; "message": "Query Successful"&#10;}]' />
 	</flow>
 	<flow name="violation-tracker-fine-flow" doc:id="8ce0012d-ffd4-4fce-9af2-8cb84d67f8d5" >
-		<scheduler doc:name="Scheduler" doc:id="5555bcf5-faae-4c36-a5d5-79ac0b3d9fba" >
+		<scheduler doc:name="Scheduler" doc:id="5555bcf5-faae-4c36-a5d5-79ac0b3d9fba" disallowConcurrentExecution="true">
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="MINUTES" />
 			
@@ -898,8 +898,12 @@ fun getNoticeState(fineCode: String, workflowState: String) = do {
     var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
     var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
     var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
+    var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
+    var waivedStates = ["FINE WAIVED", "FINE WAIVED NO APPEAL"]
     ---
-    if (["Type 1", "TYPE 1"] contains fineCode) (
+    if (correctedStates contains upper(workflowState)) "Corrected"
+    else if (waivedStates contains upper(workflowState)) "Waived"
+    else if (["Type 1", "TYPE 1"] contains fineCode) (
         if (t1First contains workflowState) "First Violation"
         else if (t1Second contains workflowState) "Second Violation"
         else if (t1Third contains workflowState) "Third Violation"
@@ -984,6 +988,7 @@ output application/java
 }]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
+			<logger level="INFO" doc:name="Log salesforce input" doc:id="823b280b-1c78-4e67-b7bd-a0b21776b60e" message="salesforce input #[vars.sfQuery.records]" />
 			<flow-ref doc:name="Upsert to SF" doc:id="b2f03178-5f22-42b4-a997-5e0f50125e66" name="sf-upsert-subflow1" target="violationHeaderRes"/>
 			<flow-ref doc:name="Fetch Violation Headers" doc:id="5b4bcd51-5892-48d4-8263-88781a3ef016" name="fetch-violation-header-subflow" target="violationHeader" />
 			<ee:transform doc:name="Update Violation Headers" doc:id="1e2c4a82-8ac2-4510-88a2-be06e1ebce04">
@@ -1019,9 +1024,9 @@ output application/java
 		<error-handler ref="error-handlerError_Handler" />
 	</flow>
 	<flow name="violation-tracker-notification-flow" doc:id="773da606-a32a-4ffb-b6ed-3ee92d5550ac" >
-		<scheduler doc:name="Scheduler" doc:id="2cbad79d-a3da-4589-a85c-3060df15f985" >
+		<scheduler doc:name="Scheduler" doc:id="2cbad79d-a3da-4589-a85c-3060df15f985" disallowConcurrentExecution="true">
 			<scheduling-strategy >
-				<fixed-frequency frequency="10" timeUnit="MINUTES" />
+				<fixed-frequency frequency="10" timeUnit="MINUTES" startDelay="300000"/>
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="start logger" doc:id="d56515b3-0e80-4ac2-b09c-be1a0974d21e" message='#[flow.name] started with correlationId: #[correlationId]'/>
@@ -1050,8 +1055,12 @@ fun getNoticeState(fineCode: String, workflowState: String) = do {
     var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
     var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
     var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
+    var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
+    var waivedStates = ["FINE WAIVED", "FINE WAIVED NO APPEAL"]
     ---
-    if (["Type 1", "TYPE 1"] contains fineCode) (
+    if (correctedStates contains upper(workflowState)) "Corrected"
+    else if (waivedStates contains upper(workflowState)) "Waived"
+    else if (["Type 1", "TYPE 1"] contains fineCode) (
         if (t1First contains workflowState) "First Violation"
         else if (t1Second contains workflowState) "Second Violation"
         else if (t1Third contains workflowState) "Third Violation"
@@ -1160,6 +1169,7 @@ output application/java
 }]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
+			<logger level="INFO" doc:name="Log salesforce input" doc:id="7f998512-5d7e-4be4-9e3a-74c608680af5" message="salesforce input #[vars.sfQuery.records]"/>
 			<flow-ref doc:name="Upsert to SF" doc:id="8e38032d-3a3f-42d9-8923-788daa7e16d6" name="sf-upsert-subflow1" target="violationHeaderRes" />
 			<flow-ref doc:name="Fetch Violation Headers" doc:id="b6e57292-0105-4cf0-a2ae-112f5c1bb426" name="fetch-violation-header-subflow" target="violationHeader" />
 			<ee:transform doc:name="Update Violation Headers" doc:id="1f89ba69-5bf0-433e-b650-1028595d110b" >

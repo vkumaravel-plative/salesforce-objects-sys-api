@@ -362,7 +362,7 @@ payload reduce (item, accumulator={}) ->
 		</ee:transform>
 	</sub-flow>
 	<sub-flow name="sf-upsert-subflow1" doc:id="1e8dc77e-4554-4b4c-a93a-e35ac659c310" >
-		<logger level="INFO" doc:name="start Logger" doc:id="c84a2af5-8d18-443f-ac60-79cba1474619" message="sf-upsert-started with correlationId: #[correlationId]" />
+    <logger level="INFO" doc:name="Logger" doc:id="437234c5-153e-4d37-888d-efdab419bc9e" message='#["Before SF Upsert - objType: " ++ vars.sfQuery.objType ++ ", extField: " ++ vars.sfQuery.extFieldName ++ ", keys: " ++ ((vars.sfQuery.records map $[vars.sfQuery.extFieldName]) joinBy ", ")]'/>
 		<salesforce:upsert objectType="#[vars.sfQuery.objType]" externalIdFieldName="#[vars.sfQuery.extFieldName]" doc:name="Upsert" doc:id="0acd996e-7a19-4a4d-918a-4c2e22c2a2df" config-ref="Salesforce_Config" >
 			<salesforce:records ><![CDATA[#[output application/java
 ---
