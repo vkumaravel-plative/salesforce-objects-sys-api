@@ -898,11 +898,12 @@ fun getNoticeState(fineCode: String, workflowState: String) = do {
     var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
     var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
     var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
-    var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
+    //var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
     var waivedStates = ["FINE WAIVED", "FINE WAIVED NO APPEAL"]
     ---
-    if (correctedStates contains upper(workflowState)) "Corrected"
-    else if (waivedStates contains upper(workflowState)) "Waived"
+    //if (correctedStates contains upper(workflowState)) "Corrected"
+    //else 
+    if (waivedStates contains upper(workflowState)) "Waived"
     else if (["Type 1", "TYPE 1"] contains fineCode) (
         if (t1First contains workflowState) "First Violation"
         else if (t1Second contains workflowState) "Second Violation"
@@ -1056,11 +1057,12 @@ fun getNoticeState(fineCode: String, workflowState: String) = do {
     var t1Fourth = ["TERMINATION NOTIFY", "TERMINATION NOTIFIED"]
     var t2First = ["IMMEDIATE FINEABLE", "IMMEDIATE FINED"]
     var t2Second = ["SUBSEQUENT FINEABLE", "SUBSEQUENT FINED"]
-    var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
+    //var correctedStates = ["CORRECTABLE CORRECTED", "CORRECTED", "SYSTEM CORRECTED"]
     var waivedStates = ["FINE WAIVED", "FINE WAIVED NO APPEAL"]
     ---
-    if (correctedStates contains upper(workflowState)) "Corrected"
-    else if (waivedStates contains upper(workflowState)) "Waived"
+    //if (correctedStates contains upper(workflowState)) "Corrected"
+    //else 
+    if (waivedStates contains upper(workflowState)) "Waived"
     else if (["Type 1", "TYPE 1"] contains fineCode) (
         if (t1First contains workflowState) "First Violation"
         else if (t1Second contains workflowState) "Second Violation"
@@ -1108,7 +1110,7 @@ fun buildNotes(row: Any) = (
         "MLS_No__c": $."mlsno",
         "Violation_Number__c": $."ViolationNumber",
         "Violation_Wording__c": $."ViolationName",
-        //"Notification__c": $."Notification",
+        "Notification__c": $."Notification",
         //("Street_Address__c": [$."stnumber", $."stdirection", $."stname"] filter (!isEmpty($)) joinBy " ") if (!isEmpty($."stnumber") or !isEmpty($."stname")),
         ("SECOND_Listing_Violation_alert_fee__c": now() as Date) if ($.FineAmount ~= 250 and (["Type 1", "TYPE 1"] contains $.FineCode)),
         ("FIRST_FHA_Violation_alert__c": now() as Date) if ($.FineAmount ~= 500 and (["Type 2", "TYPE 2"] contains $.FineCode)),
@@ -1116,13 +1118,12 @@ fun buildNotes(row: Any) = (
         //("Violating_Agent__c": stripMemberId($."ViolatingAgent")) if (!isEmpty($."ViolatingAgent")),
         ("Broker_A__c": stripMemberId($."k_listBroker")) if (!isEmpty($."k_listBroker")),
         "Status_detail__c": $."Name",
-	    ("Violation_Status__c": "Violation Fixed" ) if (upper($."Workflow_State") contains "CORRECTED"),        
-        ("Listing_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 250) and (["Type 1", "TYPE 1"] contains $.FineCode)),
+        ("Violation_Status__c": if (upper($."Workflow_State") contains "CORRECTED") "Violation Fixed" else if (["CR250", "CR500"] contains upper($."FineCode")) "Close Violation - complete" else null) if ((upper($."Workflow_State" default "") contains "CORRECTED") or (["CR250", "CR500"] contains $.FineCode)),        ("Listing_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 250) and (["Type 1", "TYPE 1"] contains $.FineCode)),        ("Listing_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 250) and (["Type 1", "TYPE 1"] contains $.FineCode)),
         ("FIRST_FHA_Violation_fixed__c": now() as Date) if ((upper($."Name" default "") contains "CORRECTED") and ($.FineAmount ~= 500) and (["Type 2", "TYPE 2"] contains $.FineCode)),
         ("Current_Notice_State__c": getNoticeState($.FineCode default "", $."Name" default "")) if (!isEmpty(getNoticeState($.FineCode default "", $."Name" default "") default "")),
         //("Violation_Date__c": toNotifDateTime($."ViolationDate")) if (!isEmpty($."ViolationDate" default "")),
         ("Notif_Sent__c": toNotifDateTime($."NotificationHis")) if (!isEmpty($."NotificationHis" default "")),
-        ("Note_Notification_LDC__c": buildNotes($)) if (!isEmpty(buildNotes($) default "")),
+        ("Note_Notification_LDC__c": buildNotes($)) if (!isEmpty(buildNotes($) default ""))
     }
 }]]></ee:set-payload>
 			</ee:message>
