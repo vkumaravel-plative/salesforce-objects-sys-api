@@ -250,6 +250,7 @@ var beginDate = vars.beginDate //"2024-01-01 00:00:00"//"2025-07-07 00:00:00"
 Mule::p("ldc.accountId") ++ beginDate ++ endDateTime ++ endDate ++ Mule::p("ldc.pwd")]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
+		<logger level="INFO" doc:name="Log bcryptPwd" doc:id="d16a413a-2479-4dcc-89c1-8e664db6db2d" message="bcryptPwd: #[vars.bcryptPwd]"/>
 		<scripting:execute engine="Groovy" doc:name="Execute" doc:id="0c424f0a-eb1b-4306-a78c-df14631a264c">
 			<scripting:code><![CDATA[import org.mindrot.jbcrypt.BCrypt
 def password = vars.bcryptPwd

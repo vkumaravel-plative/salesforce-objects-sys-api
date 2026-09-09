@@ -946,11 +946,13 @@ var sortedRows = (vars.violationDet."ldc-service"."fine-export".*"row" orderBy (
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<foreach doc:name="For set of 200" doc:id="0a1211bf-cbb7-4670-ac56-7c5e113e1e6d" collection='#[payload.records]' batchSize="200">
-			<flow-ref doc:name="Fetch Contacts" doc:id="339544a3-54ec-411a-a72d-7b29192c8c2a" name="fetch-ldc-contact-subflow" target="agentDetails"/>
-			<ee:transform doc:name="Update Agent" doc:id="078a9875-bec1-4a43-a1e7-d5c9bbf41cbc" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
+		<choice doc:name="check payload is available?" doc:id="aafa5cec-0d91-4cc2-8608-d1bc55da1941" >
+			<when expression="#[!isEmpty(payload.records)]">
+				<foreach doc:name="For set of 200" doc:id="0a1211bf-cbb7-4670-ac56-7c5e113e1e6d" collection="#[payload.records]" batchSize="200">
+			<flow-ref doc:name="Fetch Contacts" doc:id="339544a3-54ec-411a-a72d-7b29192c8c2a" name="fetch-ldc-contact-subflow" target="agentDetails" />
+			<ee:transform doc:name="Update Agent" doc:id="078a9875-bec1-4a43-a1e7-d5c9bbf41cbc">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 payload map (item, index) -> (item - "Agent__c") ++ (
@@ -962,7 +964,7 @@ payload map (item, index) -> (item - "Agent__c") ++ (
 )]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-			<flow-ref doc:name="Fetch Broker Contacts" doc:id="f1a2b3c4-d5e6-7890-fabc-123456789abc" name="fetch-ldc-broker-subflow" target="brokerDetails"/>
+			<flow-ref doc:name="Fetch Broker Contacts" doc:id="f1a2b3c4-d5e6-7890-fabc-123456789abc" name="fetch-ldc-broker-subflow" target="brokerDetails" />
 			<ee:transform doc:name="Update Broker" doc:id="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
 				<ee:message>
 					<ee:set-payload><![CDATA[%dw 2.0
@@ -991,7 +993,7 @@ output application/java
 				</ee:variables>
 			</ee:transform>
 			<logger level="INFO" doc:name="Log salesforce input" doc:id="823b280b-1c78-4e67-b7bd-a0b21776b60e" message="salesforce input #[vars.sfQuery.records]" />
-			<flow-ref doc:name="Upsert to SF" doc:id="b2f03178-5f22-42b4-a997-5e0f50125e66" name="sf-upsert-subflow1" target="violationHeaderRes"/>
+			<flow-ref doc:name="Upsert to SF" doc:id="b2f03178-5f22-42b4-a997-5e0f50125e66" name="sf-upsert-subflow1" target="violationHeaderRes" />
 			<flow-ref doc:name="Fetch Violation Headers" doc:id="5b4bcd51-5892-48d4-8263-88781a3ef016" name="fetch-violation-header-subflow" target="violationHeader" />
 			<ee:transform doc:name="Update Violation Headers" doc:id="1e2c4a82-8ac2-4510-88a2-be06e1ebce04">
 				<ee:message>
@@ -1003,10 +1005,10 @@ payload map (item, index) -> item ++ {
 }]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="256690da-3e27-429f-a916-fe095dd1ef8f" >
+			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="256690da-3e27-429f-a916-fe095dd1ef8f">
 				<ee:message />
-				<ee:variables >
-					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+				<ee:variables>
+					<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
 output application/java
 ---
 {
@@ -1022,13 +1024,18 @@ output application/java
 			<flow-ref doc:name="Create SF Line Items" doc:id="642c8ea3-0875-49f1-9f86-5553109df61a" name="sf-create-subflow" target="violationLineItemRes" />
 		
 </foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Log voilation not found" doc:id="3edcb688-a37f-4eaf-ae97-834600b8d5bf" message="violation tracker fine not found" />
+			</otherwise>
+		</choice>
 		<logger level="INFO" doc:name="End Logger" doc:id="7b4830d4-ac91-42c5-96ba-52a5d7aedbb0" message="#[flow.name] ended with correlationId: #[correlationId]"/>
 		<error-handler ref="error-handlerError_Handler" />
 	</flow>
 	<flow name="violation-tracker-notification-flow" doc:id="773da606-a32a-4ffb-b6ed-3ee92d5550ac" >
 		<scheduler doc:name="Scheduler" doc:id="2cbad79d-a3da-4589-a85c-3060df15f985" disallowConcurrentExecution="true">
 			<scheduling-strategy >
-				<fixed-frequency frequency="10" timeUnit="MINUTES" startDelay="300000"/>
+				<fixed-frequency frequency="10" timeUnit="MINUTES"/>
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="start logger" doc:id="d56515b3-0e80-4ac2-b09c-be1a0974d21e" message='#[flow.name] started with correlationId: #[correlationId]'/>
@@ -1128,11 +1135,13 @@ fun buildNotes(row: Any) = (
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<foreach doc:name="For set of 20" doc:id="e8d16cf3-52bd-4208-ab30-db7308781a6f" collection="#[payload.records]" batchSize="200" >
+		<choice doc:name="check payload is available?" doc:id="59ce8445-f17b-4c01-8a06-0c1aa7aa793f" >
+			<when expression="#[!isEmpty(payload.records)]">
+				<foreach doc:name="For set of 20" doc:id="e8d16cf3-52bd-4208-ab30-db7308781a6f" collection="#[payload.records]" batchSize="200">
 			<flow-ref doc:name="Fetch Contacts" doc:id="76a7cb30-e646-4aa1-bc6f-45a853a79472" name="fetch-ldc-contact-subflow" target="agentDetails" />
-			<ee:transform doc:name="Update Agent" doc:id="9abbca11-55e8-435b-9baa-666ed0ef1fca" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
+			<ee:transform doc:name="Update Agent" doc:id="9abbca11-55e8-435b-9baa-666ed0ef1fca">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 payload map (item, index) -> (item - "Agent__c") ++ (
@@ -1145,9 +1154,9 @@ payload map (item, index) -> (item - "Agent__c") ++ (
 				</ee:message>
 			</ee:transform>
 			<flow-ref doc:name="Fetch Broker Contacts" doc:id="91e5e90f-cfe3-4ada-a32e-be7ecb6cde91" name="fetch-ldc-broker-subflow" target="brokerDetails" />
-			<ee:transform doc:name="Update Broker" doc:id="913750da-3611-43db-bdd1-6e8c48880c61" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
+			<ee:transform doc:name="Update Broker" doc:id="913750da-3611-43db-bdd1-6e8c48880c61">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 payload map (item, index) -> (item - "Broker_A__c") ++ {
@@ -1155,10 +1164,10 @@ payload map (item, index) -> (item - "Broker_A__c") ++ {
 }]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-			<ee:transform doc:name="Set Violation Header Upsert Payload" doc:id="88277ecf-841d-4060-8a75-853aebda8467" >
+			<ee:transform doc:name="Set Violation Header Upsert Payload" doc:id="88277ecf-841d-4060-8a75-853aebda8467">
 				<ee:message />
-				<ee:variables >
-					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+				<ee:variables>
+					<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
 output application/java
 ---
 {
@@ -1172,12 +1181,12 @@ output application/java
 }]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
-			<logger level="INFO" doc:name="Log salesforce input" doc:id="7f998512-5d7e-4be4-9e3a-74c608680af5" message="salesforce input #[vars.sfQuery.records]"/>
+			<logger level="INFO" doc:name="Log salesforce input" doc:id="7f998512-5d7e-4be4-9e3a-74c608680af5" message="salesforce input #[vars.sfQuery.records]" />
 			<flow-ref doc:name="Upsert to SF" doc:id="8e38032d-3a3f-42d9-8923-788daa7e16d6" name="sf-upsert-subflow1" target="violationHeaderRes" />
 			<flow-ref doc:name="Fetch Violation Headers" doc:id="b6e57292-0105-4cf0-a2ae-112f5c1bb426" name="fetch-violation-header-subflow" target="violationHeader" />
-			<ee:transform doc:name="Update Violation Headers" doc:id="1f89ba69-5bf0-433e-b650-1028595d110b" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
+			<ee:transform doc:name="Update Violation Headers" doc:id="1f89ba69-5bf0-433e-b650-1028595d110b">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 payload map (item, index) -> item ++ {
@@ -1185,10 +1194,10 @@ payload map (item, index) -> item ++ {
 }]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="e8f5c827-78ee-4c14-9957-5953c13d83d1" >
+			<ee:transform doc:name="Set Violation Line Item Upsert Payload" doc:id="e8f5c827-78ee-4c14-9957-5953c13d83d1">
 				<ee:message />
-				<ee:variables >
-					<ee:set-variable variableName="sfQuery" ><![CDATA[%dw 2.0
+				<ee:variables>
+					<ee:set-variable variableName="sfQuery"><![CDATA[%dw 2.0
 output application/java
 ---
 {
@@ -1197,12 +1206,17 @@ output application/java
 	"token": Mule::p("secure::salesforce.new.token"),
 	"authUrl": Mule::p("salesforce.authUrl"),
 	"recordType": "RLS_Violations_Line_Item__c",
-	"records": (payload map (item) -> item - "Agent_s_Company__c" - "Company_Code__c" - "Broker_A__c")
+	"records": (payload map (item) -> item - "Agent_s_Company__c" - "Company_Code__c" - "Broker_A__c" - "Notification__c" - "Violation_Status__c" - "SECOND_Listing_Violation_alert_fee__c" - "FIRST_FHA_Violation_alert__c" - "Listing_Violation_fixed__c" - "FIRST_FHA_Violation_fixed__c")
 }]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
 			<flow-ref doc:name="Create SF Line Items" doc:id="7fb08b0f-26ed-40ae-8543-de6f0168a882" name="sf-create-subflow" target="violationLineItemRes" />
 		</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Log voilation not found" doc:id="cb77ae2d-8f33-42d7-87fe-a1c17277bbd3" message="violation tracker notification not found"/>
+			</otherwise>
+		</choice>
 		<logger level="INFO" doc:name="End Logger" doc:id="aaa81a74-b128-4d68-888b-969e77bbd495" message="#[flow.name] ended with correlationId: #[correlationId]"/>
 		<error-handler ref="error-handlerError_Handler" />
 	</flow>
