@@ -6,3 +6,11 @@ http:
 api:
   name: "salesforce-objects-sys-api"
   version: "v1.0.0"
+  
+os:
+  notification:
+    ttl: "30"
+    expiration-interval: "30"
+  fine:
+    ttl: "30"
+    expiration-interval: "30"

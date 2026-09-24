@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
 	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
 	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
 	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
 http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
@@ -33,4 +35,6 @@ http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/cu
 		</os:connection>
 	</os:config>
 	<os:object-store name="Object_store" doc:name="Object store" doc:id="017a0325-47b6-47c5-97a8-e148c9629425" config-ref="ObjectStore_Config" entryTtl="24" entryTtlUnit="HOURS" expirationIntervalUnit="HOURS"/>
+    <os:object-store name="Object_store_Notification" doc:name="Object store" doc:id="79158286-c00c-46c7-b327-976959604c58" entryTtl="${os.notification.ttl}" entryTtlUnit="DAYS" expirationInterval="${os.notification.expiration-interval}" expirationIntervalUnit="DAYS" />
+	<os:object-store name="Object_store_Fine" doc:name="Object store" doc:id="900f4da3-a9cf-4736-91f5-43711ad681a0" entryTtl="${os.fine.ttl}" entryTtlUnit="DAYS" expirationInterval="${os.fine.expiration-interval}" expirationIntervalUnit="DAYS" />	
 </mule>

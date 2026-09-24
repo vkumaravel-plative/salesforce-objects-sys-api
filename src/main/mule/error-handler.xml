@@ -55,7 +55,7 @@ output application/json
 	    	if(isEmpty(error.errorMessage.payload)) 
 	    		(error.exception.cause.exceptionMessage default "Could not retrieve exact error")
 	    	else
-	    		(error.errorMessage.payload default "")
+	    		(error.errorMessage.payload default error.description)
 	    )
 	}
 }]]></ee:set-payload>
@@ -67,7 +67,7 @@ output application/json
 500]]></ee:set-variable>
 				</ee:variables>
 			</ee:transform>
-			<logger level="INFO" doc:name="Log Error" doc:id="2c434a4f-54b4-43d6-aecd-e90ef1bfe380" message="#[payload]"/>
+			<logger level="INFO" doc:name="Log Error" doc:id="2c434a4f-54b4-43d6-aecd-e90ef1bfe380" message="error payload #[payload]"/>
 		</on-error-propagate>
 	</error-handler>
 </mule>

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
-    <flow name="api-main">
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<flow name="api-main">
         <http:listener doc:name="Listener" doc:id="38feda03-1730-46aa-88b2-9a2ed8b3cf60" config-ref="HTTP_Listener_config" path="${http.path}">
             <http:response statusCode="#[vars.statusCode]" />
             <http:error-response statusCode="#[vars.httpStatus]">
@@ -885,7 +886,13 @@ output application/json
 }]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
+		<os:retrieve doc:name="Store Fine Timestamp" doc:id="cd38645a-f018-48c3-b570-70c5d7489935" key="#[vars.initParams.osKey]" objectStore="Object_store_Fine" target="beginDate">
+					<os:default-value><![CDATA[#["2026-01-01 00:00:00"]]]></os:default-value>
+				</os:retrieve>
 		<flow-ref doc:name="Fetch LDC Violation Tracker" doc:id="02625643-f2b0-4e33-ac92-36f411b70622" name="ldc-violation-tracker-call-subflow" target="violationDet"/>
+		<os:store doc:name="Store Fine Timestamp" doc:id="7c746c35-b5a4-4685-8bc6-865a55a7c4b1" key='#[now() as String {format: "YYYY-MM-dd"}]' objectStore="Object_store_Fine">
+					<os:value><![CDATA[#[now() as String {format: "YYYY-MM-dd 00:00:00"}]]]></os:value>
+				</os:store>
 		<ee:transform doc:name="Set SF payload" doc:id="9eb1bd23-2c39-4359-ad12-f1d51f3b4734">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
@@ -1051,7 +1058,13 @@ output application/json
 }]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
+		<os:retrieve doc:name="Retrieve Notification Timestamp" doc:id="1ef9f3c4-a481-4f9a-9e6e-719631264cb0" key="#[vars.initParams.osKey]" objectStore="Object_store_Notification" target="beginDate">
+					<os:default-value><![CDATA[#["2026-01-01 00:00:00"]]]></os:default-value>
+				</os:retrieve>
 		<flow-ref doc:name="Fetch LDC Violation Tracker" doc:id="e5975566-ced9-4e56-8f82-c81121996d3e" name="ldc-violation-tracker-call-subflow" target="violationDet" />
+		<os:store doc:name="Store Notification Timestamp" doc:id="abe9cc91-6c4c-40bb-bb17-54bd140edfb2" key='#[now() as String {format: "YYYY-MM-dd"}]' objectStore="Object_store_Notification">
+					<os:value><![CDATA[#[now() as String {format: "YYYY-MM-dd 00:00:00"}]]]></os:value>
+				</os:store>
 		<ee:transform doc:name="Set SF payload" doc:id="f5d8bb43-111d-4cba-b068-61f55c1f3f3f" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
